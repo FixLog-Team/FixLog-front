@@ -19,6 +19,7 @@
 - 프로젝트에 `docs/dev-guidelines/COMMIT_CONVENTION.md` 파일 존재
 - Git 저장소가 GitHub에 연결되어 있어야 함
 - main 브랜치 대비 커밋된 변경사항이 있어야 함 (작업 디렉토리의 uncommitted 변경사항 유무와 무관)
+- (선택) Atlassian MCP 연결 - JIRA 티켓 정보 자동 조회용
 
 **주의사항**
 
@@ -37,13 +38,15 @@
 
 **처리 과정**
 
-1. `git log main..HEAD`로 현재 브랜치의 커밋 목록 확인
-2. `git diff main..HEAD`로 main 브랜치 대비 변경 내용 분석
-3. `COMMIT_CONVENTION.md` 규칙에 따라 커밋 타입 판단 (feat/fix/refactor/docs/chore)
-4. PR 제목 자동 생성 (커밋 메시지 기반)
-5. `PULL_REQUEST.md` 템플릿에 맞춰 PR 본문 작성
-6. 현재 브랜치를 원격 저장소에 푸시
-7. GitHub CLI를 통해 PR 생성
+1. 브랜치 이름에서 JIRA 이슈 번호 추출 (예: `kan-22`, `KAN-22-feature`)
+2. JIRA 이슈 번호가 있으면 Atlassian MCP로 티켓 정보 조회
+3. `git log main..HEAD`로 현재 브랜치의 커밋 목록 확인
+4. `git diff main..HEAD`로 main 브랜치 대비 변경 내용 분석
+5. `COMMIT_CONVENTION.md` 규칙에 따라 커밋 타입 판단 (feat/fix/refactor/docs/chore)
+6. PR 제목 자동 생성 (커밋 메시지 기반)
+7. `PULL_REQUEST.md` 템플릿에 맞춰 PR 본문 작성 (JIRA 링크 포함)
+8. 현재 브랜치를 원격 저장소에 푸시
+9. GitHub CLI를 통해 PR 생성
 
 **준수하는 규칙**
 

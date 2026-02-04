@@ -4,7 +4,9 @@
       "Bash(git commit:*)",
       "Bash(gh pr create:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebSearch",
+      "Bash(claude mcp add:*)"
     ]
   }
 }

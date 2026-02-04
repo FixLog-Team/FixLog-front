@@ -2,7 +2,7 @@
 name: pr-generate
 description: Generate a pull request with proper commit message and PR description following project conventions
 disable-model-invocation: true
-allowed-tools: Bash(git *), Bash(gh *), Read, Glob, Grep
+allowed-tools: Bash(git *), Bash(gh *), Read, Glob, Grep, mcp__atlassian__jira_get_issue
 ---
 
 # PR 자동 생성기
@@ -10,6 +10,14 @@ allowed-tools: Bash(git *), Bash(gh *), Read, Glob, Grep
 현재 브랜치에 커밋된 변경사항을 분석하여 프로젝트 규칙에 맞는 PR을 자동으로 생성합니다.
 
 ## 작업 순서
+
+### 0. JIRA 티켓 정보 조회
+- 현재 브랜치 이름에서 JIRA 이슈 번호 추출 (패턴: `kan-숫자` 또는 `KAN-숫자`)
+  - 예: `kan-22`, `KAN-22-login-feature`, `hs/kan-22` 등에서 `KAN-22` 추출
+- 이슈 번호가 있으면 `mcp__atlassian__jira_get_issue` 도구로 티켓 정보 조회
+  - 티켓 제목, 설명, 상태 등 확인
+  - JIRA 링크 생성: `https://[workspace].atlassian.net/browse/KAN-22`
+- 이슈 번호가 없으면 JIRA 섹션은 "해당 없음"으로 작성
 
 ### 1. 브랜치 변경사항 분석
 - `git log main..HEAD`로 현재 브랜치의 커밋 목록 확인
@@ -121,7 +129,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ## 6. Context / 참고 자료 (Context)
 
 - **JIRA**
-  - 링크: [있다면 추가]
+  - 티켓: [KAN-XX](https://[workspace].atlassian.net/browse/KAN-XX)
+  - 제목: [JIRA 티켓 제목]
+  - 상태: [JIRA 티켓 상태]
 - **참고 자료**
   - [관련 문서 링크]
 
@@ -150,7 +160,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 1. **브랜치에 커밋이 있어야 함**: main 브랜치 대비 커밋된 변경사항이 있어야 실행됨 (작업 디렉토리의 uncommitted 변경사항 유무와 무관)
 2. **GitHub CLI 필수**: `gh` 명령어가 설치되어 있고 인증되어 있어야 함
 3. **브랜치 확인**: main/master 브랜치가 아닌 feature 브랜치에서 실행하는 것을 권장
-4. **JIRA 이슈**: 가능한 한 JIRA 이슈를 먼저 생성하고 작업하는 것을 권장하지만, 소규모 작업은 생략 가능
+4. **JIRA 이슈**: 브랜치 이름에 JIRA 이슈 번호가 포함되어 있으면 자동으로 티켓 정보를 조회함
+   - 브랜치 명명 규칙: `kan-1234` 또는 `kan-1234-description` 형태 권장
+   - Atlassian MCP 연결이 필요함 (최초 실행 시 인증 요청됨)
 5. **변경 내용 분석**: 실제 코드 변경을 꼼꼼히 읽고 정확하게 분석할 것
 
 ## 실행 방법
