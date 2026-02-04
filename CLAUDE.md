@@ -403,9 +403,139 @@ export const DocumentEditor: React.FC<Props> = ({ title, onSave }) => {
 
 ## 참고 문서
 
-- `planning/프로젝트_제안서.md` - 전체 프로젝트 개요
-- `planning/핵심_시스템_기획서.md` - 시스템 상세 설계
-- `planning/페이지별_필요_기능(API).md` - API 명세
+- `docs/planning/프로젝트_제안서.md` - 전체 프로젝트 개요
+- `docs/planning/핵심_시스템_기획서.md` - 시스템 상세 설계
+- `docs/planning/페이지별_필요_기능(API).md` - API 명세
+- `docs/dev-guidelines/COMMIT_CONVENTION.md` - 커밋 메시지 규칙 상세
+- `docs/dev-guidelines/PULL_REQUEST.md` - PR 템플릿 상세
+- `docs/dev-guidelines/BRANCH_CONVENTION.md` - Git 브랜치 규칙 상세
+
+---
+
+## Git 브랜치 전략
+
+### 브랜치 종류
+
+| 브랜치 | 역할 | 규칙 |
+|--------|------|------|
+| `main` | 배포 기준 | 스프린트 종료 후만 머지, 직접 push 금지 |
+| `dev` | 개발 통합 | 완료된 이슈를 순차적으로 머지, 직접 push 금지 |
+| `kan-<이슈번호>-설명` | 이슈 단위 개발 | JIRA 티켓에 대응, 완료 시 `dev`로 머지 |
+| `<이니셜>/<브랜치명>` | 개인 작업 | 개인 브랜치에서 이슈 브랜치로 PR |
+
+### 작업 흐름
+
+```
+개인 브랜치 (hs/kan-123)
+    ↓ PR
+이슈 브랜치 (kan-123-login)
+    ↓ PR (테스트 완료 후)
+dev
+    ↓ 스프린트 종료 시
+main (배포)
+```
+
+### 머지 방식
+
+- **Rebase and merge** 사용 (GitHub)
+- 선형 히스토리 유지
+
+---
+
+## 커밋 메시지 규칙
+
+### 형식
+
+```
+[type] [JIRA-123] summary
+```
+
+### Type 종류
+
+| type | 사용 목적 |
+|------|----------|
+| `feat` | 사용자 관점의 기능 추가 또는 변경 |
+| `fix` | 버그 수정, 잘못된 동작 수정 |
+| `refactor` | **동작 변경 없이** 구조/가독성 개선 |
+| `docs` | 문서 수정 (README, Wiki 등) |
+| `chore` | 빌드, 설정, 의존성, 스크립트 등 |
+| `hotfix` | 배포 후 긴급 수정 |
+
+### 원칙
+
+- **One Commit = One Intent**: 한 커밋에 하나의 목적만
+- **Describe WHAT, not HOW**: 구현 방식보다 변경 결과와 의도
+- **Avoid Mixed Commits**: 성격이 다른 변경은 커밋 분리
+- 요약은 **50자 내외**, 마침표 없음
+
+### 예시
+
+```
+[feat] [KAN-101] 로그인 시 토큰 재발급 로직 추가
+[fix] [KAN-115] 중복 결제 요청 시 예외 처리 누락 수정
+[refactor] [KAN-120] 결제 검증 로직 메서드 분리
+[docs] 로컬 실행 방법 및 환경변수 설명 추가
+```
+
+---
+
+## PR 작성 가이드
+
+### PR 제목 형식
+
+```
+[type] 작업 내용 요약
+```
+
+### PR 본문 필수 섹션
+
+1. **작업 유형**: 기능 개발 / 버그 개선 / 리팩토링 중 **하나만** 선택
+2. **작업 요약**: 한 줄 요약
+3. **작업 배경/목적**: 왜 이 작업이 필요했는지
+4. **작업 내용**: 유형별 상세 내용
+5. **UI 변경 사항**: 스크린샷/영상 (해당 시)
+6. **테스트 및 검증**: 확인한 시나리오
+7. **Context/참고 자료**: JIRA 링크, 관련 PR 등
+
+---
+
+## Claude Code 커스텀 스킬
+
+### `/commit-generate`
+
+변경사항을 분석하여 프로젝트 커밋 규칙에 맞는 커밋을 자동 생성합니다.
+
+- 변경사항 자동 분석
+- 성격별 커밋 분리 (feat/fix/refactor/docs/chore)
+- JIRA 이슈 번호 자동 감지 (브랜치명 기반)
+- 커밋 메시지 자동 생성
+
+### `/pr-generate`
+
+현재 브랜치의 커밋을 분석하여 PR을 자동 생성합니다.
+
+- JIRA 티켓 정보 자동 조회 (Atlassian MCP 연동)
+- 변경 유형별 PR 본문 자동 작성
+- 원격 푸시 및 PR 생성 자동화
+
+---
+
+## 현재 프로젝트 상태
+
+> **초기 설정 단계** - 아직 소스 코드 개발 전
+
+### 완료된 작업
+
+- 프로젝트 기획 문서 작성 완료
+- Git 브랜치/커밋/PR 규칙 정립
+- Claude Code 자동화 스킬 설정
+
+### 다음 단계
+
+1. React + TypeScript 프로젝트 초기화 (Vite)
+2. 기본 디렉토리 구조 생성
+3. 핵심 의존성 설치 (Tailwind, shadcn/ui, React Router, Zustand, React Query)
+4. 기본 레이아웃 및 라우팅 설정
 
 ---
 
