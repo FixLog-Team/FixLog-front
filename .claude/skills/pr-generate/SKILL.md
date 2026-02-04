@@ -7,14 +7,15 @@ allowed-tools: Bash(git *), Bash(gh *), Read, Glob, Grep
 
 # PR 자동 생성기
 
-현재 변경사항을 분석하여 프로젝트 규칙에 맞는 커밋과 PR을 자동으로 생성합니다.
+현재 브랜치에 커밋된 변경사항을 분석하여 프로젝트 규칙에 맞는 PR을 자동으로 생성합니다.
 
 ## 작업 순서
 
-### 1. 변경사항 분석
-- `git status`로 현재 변경된 파일 목록 확인
-- `git diff`로 변경 내용 분석
+### 1. 브랜치 변경사항 분석
+- `git log main..HEAD`로 현재 브랜치의 커밋 목록 확인
+- `git diff main..HEAD`로 main 브랜치 대비 변경 내용 분석
 - 변경 유형 판단 (feat/fix/refactor/docs/chore)
+- 커밋되지 않은 변경사항이 있으면 먼저 커밋 여부 확인
 
 ### 2. 커밋 메시지 생성 (docs/dev-guidelines/COMMIT_CONVENTION.md 준수)
 - 형식: `[type] [JIRA-123] summary`
@@ -135,10 +136,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-### 5. 커밋 및 푸시
-- 변경된 파일들을 스테이징 (`git add`)
-- 생성한 커밋 메시지로 커밋 (`git commit`)
+### 5. 푸시
 - 현재 브랜치를 원격에 푸시 (`git push`)
+- 원격 추적 브랜치가 없는 경우 자동으로 설정 (`git push -u origin`)
 
 ### 6. PR 생성
 - `gh pr create`를 사용하여 PR 생성
@@ -147,7 +147,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## 주의사항
 
-1. **변경사항이 있어야 함**: staged 또는 unstaged 변경사항이 있어야 실행됨
+1. **브랜치에 커밋이 있어야 함**: main 브랜치 대비 커밋된 변경사항이 있어야 실행됨 (작업 디렉토리의 uncommitted 변경사항 유무와 무관)
 2. **GitHub CLI 필수**: `gh` 명령어가 설치되어 있고 인증되어 있어야 함
 3. **브랜치 확인**: main/master 브랜치가 아닌 feature 브랜치에서 실행하는 것을 권장
 4. **JIRA 이슈**: 가능한 한 JIRA 이슈를 먼저 생성하고 작업하는 것을 권장하지만, 소규모 작업은 생략 가능
@@ -164,6 +164,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ## 예외 처리
 
 - PR 생성 실패 시 에러 메시지 출력
-- 변경사항이 없으면 작업 중단
+- main 브랜치 대비 커밋이 없으면 작업 중단
 - main/master 브랜치인 경우 경고 후 사용자에게 확인 요청
 - 원격 추적 브랜치가 없는 경우 자동으로 설정 (`git push -u origin`)
+- 커밋되지 않은 변경사항이 있는 경우 먼저 커밋할지 사용자에게 확인
