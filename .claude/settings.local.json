@@ -6,7 +6,15 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "WebSearch",
-      "Bash(claude mcp add:*)"
+      "Bash(claude mcp add:*)",
+      "Bash(npm create vite@latest . -- --template react-ts)",
+      "Bash(npm create:*)",
+      "Bash(npm init -y)",
+      "Bash(npm install:*)",
+      "Bash(timeout 5 npm run:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm install:*)",
+      "Bash(timeout 5 pnpm dev:*)"
     ]
   }
 }
