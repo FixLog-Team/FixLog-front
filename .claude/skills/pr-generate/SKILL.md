@@ -16,7 +16,7 @@ allowed-tools: Bash(git *), Bash(gh *), Read, Glob, Grep, mcp__atlassian__jira_g
   - 예: `kan-22`, `KAN-22-login-feature`, `hs/kan-22` 등에서 `KAN-22` 추출
 - 이슈 번호가 있으면 `mcp__atlassian__jira_get_issue` 도구로 티켓 정보 조회
   - 티켓 제목, 설명, 상태 등 확인
-  - JIRA 링크 생성: `https://[workspace].atlassian.net/browse/KAN-22`
+  - JIRA 링크 생성: `https://minhoo0333.atlassian.net/browse/KAN-22`
 - 이슈 번호가 없으면 JIRA 섹션은 "해당 없음"으로 작성
 
 ### 1. 브랜치 변경사항 분석
@@ -129,7 +129,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ## 6. Context / 참고 자료 (Context)
 
 - **JIRA**
-  - 티켓: [KAN-XX](https://[workspace].atlassian.net/browse/KAN-XX)
+  - 티켓: [KAN-XX](https://minhoo0333.atlassian.net/browse/KAN-XX)
   - 제목: [JIRA 티켓 제목]
   - 상태: [JIRA 티켓 상태]
 - **참고 자료**
