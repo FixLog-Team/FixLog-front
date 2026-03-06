@@ -1,9 +1,16 @@
+import { RouterProvider } from 'react-router-dom';
+import { OverlayProvider } from 'overlay-kit';
+import { QueryProvider } from '@/app/providers/QueryProvider';
+import { router } from '@/app/router';
+
 function App() {
   return (
-    <div>
-      <h1>FixLog</h1>
-    </div>
-  )
+    <QueryProvider>
+      <OverlayProvider>
+        <RouterProvider router={router} />
+      </OverlayProvider>
+    </QueryProvider>
+  );
 }
 
-export default App
+export default App;
