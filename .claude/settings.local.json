@@ -14,7 +14,8 @@
       "Bash(timeout 5 npm run:*)",
       "Bash(pnpm approve-builds:*)",
       "Bash(pnpm install:*)",
-      "Bash(timeout 5 pnpm dev:*)"
+      "Bash(timeout 5 pnpm dev:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }

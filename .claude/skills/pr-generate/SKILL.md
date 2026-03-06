@@ -20,8 +20,8 @@ allowed-tools: Bash(git *), Bash(gh *), Read, Glob, Grep, mcp__atlassian__jira_g
 - 이슈 번호가 없으면 JIRA 섹션은 "해당 없음"으로 작성
 
 ### 1. 브랜치 변경사항 분석
-- `git log main..HEAD`로 현재 브랜치의 커밋 목록 확인
-- `git diff main..HEAD`로 main 브랜치 대비 변경 내용 분석
+- `git log dev..HEAD`로 현재 브랜치의 커밋 목록 확인
+- `git diff dev..HEAD`로 dev 브랜치 대비 변경 내용 분석
 - 변경 유형 판단 (feat/fix/refactor/docs/chore)
 - 커밋되지 않은 변경사항이 있으면 먼저 커밋 여부 확인
 
@@ -157,7 +157,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## 주의사항
 
-1. **브랜치에 커밋이 있어야 함**: main 브랜치 대비 커밋된 변경사항이 있어야 실행됨 (작업 디렉토리의 uncommitted 변경사항 유무와 무관)
+1. **브랜치에 커밋이 있어야 함**: dev 브랜치 대비 커밋된 변경사항이 있어야 실행됨 (작업 디렉토리의 uncommitted 변경사항 유무와 무관)
 2. **GitHub CLI 필수**: `gh` 명령어가 설치되어 있고 인증되어 있어야 함
 3. **브랜치 확인**: main/master 브랜치가 아닌 feature 브랜치에서 실행하는 것을 권장
 4. **JIRA 이슈**: 브랜치 이름에 JIRA 이슈 번호가 포함되어 있으면 자동으로 티켓 정보를 조회함
@@ -176,7 +176,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ## 예외 처리
 
 - PR 생성 실패 시 에러 메시지 출력
-- main 브랜치 대비 커밋이 없으면 작업 중단
-- main/master 브랜치인 경우 경고 후 사용자에게 확인 요청
+- dev 브랜치 대비 커밋이 없으면 작업 중단
+- main/master/dev 브랜치인 경우 경고 후 사용자에게 확인 요청
 - 원격 추적 브랜치가 없는 경우 자동으로 설정 (`git push -u origin`)
 - 커밋되지 않은 변경사항이 있는 경우 먼저 커밋할지 사용자에게 확인
