@@ -15,7 +15,19 @@
       "Bash(pnpm approve-builds:*)",
       "Bash(pnpm install:*)",
       "Bash(timeout 5 pnpm dev:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(uv tool install:*)",
+      "WebFetch(domain:oraios.github.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(uvx:*)",
+      "Bash(timeout 5 uvx:*)",
+      "mcp__serena__list_dir",
+      "Bash(git log:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "serena"
+  ]
 }
