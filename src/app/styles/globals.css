@@ -5,6 +5,15 @@
 
 :root {
   --radius: 0.625rem;
+  /* BlockNote 오버라이드 토큰 */
+  --bn-border-color: #d1d5db;
+  --bn-hover-bg: #f3f4f6;
+  --bn-muted-text: #9ca3af;
+  --bn-menu-radius: 8px;
+  --bn-item-radius: 6px;
+  --bn-transition-speed: 0.1s;
+  --bn-suggestion-menu-max-height: 560px;
+  --bn-dropdown-max-height: 360px;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -125,31 +134,31 @@
 
 /* 스크롤 박스: 회색 테두리 + 그림자 + 둥근 모서리 — Miller's Law: 7개 가시 */
 #bn-suggestion-menu {
-  max-height: 560px;
+  max-height: var(--bn-suggestion-menu-max-height);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: var(--bn-border-color) transparent;
   padding: 4px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border: 1px solid var(--bn-border-color);
+  border-radius: var(--bn-menu-radius);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   background-color: #ffffff;
 }
 
 /* 설명 텍스트(subtext) — 회색으로 구분 */
 .bn-suggestion-menu-item .text-xs {
-  color: #9ca3af;
+  color: var(--bn-muted-text);
 }
 
 /* Color 버튼 — ghost 버튼 hover 강화 (Delete와 동일한 스타일) */
 .bn-shadcn button[data-test="colors"] {
-  border-radius: 6px;
-  transition: background-color 0.1s;
+  border-radius: var(--bn-item-radius);
+  transition: background-color var(--bn-transition-speed);
 }
 
 .bn-shadcn button[data-test="colors"]:hover,
 .bn-shadcn button[data-test="colors"][data-state="open"] {
-  background-color: #f3f4f6 !important;
+  background-color: var(--bn-hover-bg) !important;
 }
 
 /* Paragraph Select 트리거 — ghost 버튼처럼 */
@@ -157,26 +166,26 @@
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  border-radius: 6px;
+  border-radius: var(--bn-item-radius);
   padding: 6px 8px;
   cursor: pointer;
-  transition: background-color 0.1s;
+  transition: background-color var(--bn-transition-speed);
 }
 
 .bn-shadcn [data-slot="select-trigger"]:hover {
-  background-color: #f3f4f6 !important;
+  background-color: var(--bn-hover-bg) !important;
 }
 
 /* Color / Paragraph 드롭다운 컨테이너 */
 .bn-shadcn .bn-menu-dropdown,
 .bn-shadcn .bn-select {
-  max-height: 360px;
+  max-height: var(--bn-dropdown-max-height);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: var(--bn-border-color) transparent;
   padding: 6px;
-  border: 1px solid #d1d5db !important;
-  border-radius: 8px !important;
+  border: 1px solid var(--bn-border-color) !important;
+  border-radius: var(--bn-menu-radius) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
   background-color: #ffffff !important;
 }
@@ -184,28 +193,28 @@
 /* Color 드롭다운 항목 (DropdownMenuCheckboxItem) */
 .bn-shadcn .bn-menu-dropdown [data-slot="dropdown-menu-checkbox-item"] {
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--bn-item-radius);
   padding: 7px 12px;
-  transition: background-color 0.1s;
+  transition: background-color var(--bn-transition-speed);
 }
 
 .bn-shadcn .bn-menu-dropdown [data-slot="dropdown-menu-checkbox-item"]:focus,
 .bn-shadcn .bn-menu-dropdown [data-slot="dropdown-menu-checkbox-item"][data-highlighted] {
-  background-color: #f3f4f6 !important;
+  background-color: var(--bn-hover-bg) !important;
   color: inherit !important;
 }
 
 /* Paragraph Select 항목 (SelectItem) */
 .bn-shadcn .bn-select [data-slot="select-item"] {
   cursor: pointer !important;
-  border-radius: 6px !important;
+  border-radius: var(--bn-item-radius) !important;
   padding: 7px 12px !important;
-  transition: background-color 0.1s;
+  transition: background-color var(--bn-transition-speed);
 }
 
 .bn-shadcn .bn-select [data-slot="select-item"]:focus,
 .bn-shadcn .bn-select [data-slot="select-item"][data-highlighted] {
-  background-color: #f3f4f6 !important;
+  background-color: var(--bn-hover-bg) !important;
   color: inherit !important;
 }
 
@@ -215,7 +224,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: #9ca3af;
+  color: var(--bn-muted-text);
   text-transform: uppercase;
 }
 
@@ -225,15 +234,15 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: #9ca3af;
+  color: var(--bn-muted-text);
   text-transform: uppercase;
 }
 
 /* 항목: 하나의 div처럼 hover */
 .bn-suggestion-menu-item {
   cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.1s;
+  border-radius: var(--bn-item-radius);
+  transition: background-color var(--bn-transition-speed);
 }
 
 /* 내부 자식 요소들의 개별 배경/hover 제거 */
@@ -245,7 +254,7 @@
 
 /* 전체 행이 하나로 highlight */
 .bn-suggestion-menu-item:hover {
-  background-color: #f3f4f6;
+  background-color: var(--bn-hover-bg);
 }
 
 .bn-suggestion-menu-item:hover > *,
