@@ -52,7 +52,14 @@
       "Bash(xargs ls:*)",
       "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/shadcn/src -name *.tsx)",
       "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/react/src -name *.tsx)",
-      "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/react -name *.tsx)"
+      "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/react -name *.tsx)",
+      "mcp__serena__list_memories",
+      "WebFetch(domain:mode-pound-00877657.figma.site)",
+      "Bash(find:*)",
+      "Bash(pnpm dlx:*)",
+      "Bash(npm --version)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm run dev:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
