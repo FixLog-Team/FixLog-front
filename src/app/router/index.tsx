@@ -21,4 +21,8 @@ export const router = createBrowserRouter([
     path: '/login',
     lazy: () => import('@/pages/login/ui/login-page').then((m) => ({ Component: m.LoginPage })),
   },
+  {
+    path: '/login/callback',
+    lazy: () => import('@/pages/login/ui/login-callback-page').then((m) => ({ Component: m.LoginCallbackPage })),
+  },
 ]);
