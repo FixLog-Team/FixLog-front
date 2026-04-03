@@ -7,7 +7,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/documents/:documentId',
-    lazy: () => import('@/pages/document-editor/ui/document-editor-page').then((m) => ({ Component: m.DocumentEditorPage })),
+    lazy: () => import('@/pages/document-detail/ui/document-detail-page').then((m) => ({ Component: m.DocumentDetailPage })),
   },
   {
     path: '/documents/:documentId/history',
