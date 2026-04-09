@@ -528,6 +528,11 @@ main (배포)
   - 예측 가능성 (09~11): 이름 충돌, 반환 타입 통일, 숨은 로직
   - 응집도 (12~14): 파일 응집, 매직 넘버 응집, 폼 응집
   - 결합도 (15~17): 단일 책임, 중복 허용 기준, Props Drilling
+- 컴포넌트 코딩 가이드 4개 규칙 검사
+  - C-1: 컴포넌트 네이밍 (PascalCase, 파일명 일치)
+  - C-2: 컴포넌트 내부 선언 순서 (state → hooks → variables → functions → effects → return)
+  - C-3: JSX Props 전달 순서 (data → function → explicit boolean → shorthand boolean)
+  - C-4: 절대 경로 import (`@/` alias, 상대 경로 금지)
 - 파일:라인 단위의 구체적 지적과 수정 방향 제시
 
 ---
