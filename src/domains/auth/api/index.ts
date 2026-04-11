@@ -3,7 +3,8 @@ import type {
   LoginRequest,
   LoginResponse,
   SessionResponse,
-} from '../types';
+} from '@/domains/auth/types';
+import { AUTH_API_ENDPOINTS } from '@/domains/auth/constants/api-endpoints';
 
 export const authApi = {
   /**
@@ -12,15 +13,14 @@ export const authApi = {
    * axios 대신 직접 페이지 이동을 사용해야 함
    */
   getGoogleAuthUrl: (): string => {
-    // Spring Security OAuth2 엔드포인트
-    return '/api/oauth2/authorization/google';
+    return AUTH_API_ENDPOINTS.GOOGLE_AUTH;
   },
 
   /**
    * Google OAuth 로그인 처리
    */
   login: async (request: LoginRequest): Promise<LoginResponse> => {
-    const { data } = await http.post<LoginResponse>('/auth/login', request);
+    const { data } = await http.post<LoginResponse>(AUTH_API_ENDPOINTS.LOGIN, request);
     return data;
   },
 
@@ -28,7 +28,7 @@ export const authApi = {
    * 현재 세션 정보 조회
    */
   getSession: async (): Promise<SessionResponse> => {
-    const { data } = await http.get<SessionResponse>('/auth/session');
+    const { data } = await http.get<SessionResponse>(AUTH_API_ENDPOINTS.SESSION);
     return data;
   },
 
@@ -36,7 +36,7 @@ export const authApi = {
    * 로그아웃
    */
   logout: async (): Promise<void> => {
-    await http.post('/auth/logout');
+    await http.post(AUTH_API_ENDPOINTS.LOGOUT);
   },
 
   /**
@@ -44,7 +44,7 @@ export const authApi = {
    */
   refreshToken: async (): Promise<{ accessToken: string }> => {
     const { data } = await http.post<{ accessToken: string }>(
-      '/auth/token/refresh'
+      AUTH_API_ENDPOINTS.REFRESH_TOKEN
     );
     return data;
   },

@@ -6,9 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/ui/card';
-import { LOGIN_PAGE_TEXT } from '../constants';
+import { LOGIN_PAGE_TEXT } from '@/pages/login/constants';
 import { useGoogleLogin } from '@/features/auth/login/hooks/use-google-login';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/shared/constants/routes';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export function LoginPage() {
   const { startGoogleLogin, isLoading } = useGoogleLogin({
     onSuccess: (data) => {
       console.log('Login success:', data);
-      navigate('/documents');
+      navigate(ROUTES.DOCUMENTS);
     },
     onError: (error) => {
       console.error('Login error:', error);

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { STORAGE_KEYS } from '@/shared/constants/storage-keys';
+import { ROUTES } from '@/shared/constants/routes';
 
 /**
  * Spring Security OAuth2가 모든 인증을 처리하는 경우
@@ -16,17 +17,17 @@ export function LoginCallbackSimple() {
 
     if (error) {
       alert('Google 인증이 실패했습니다.');
-      navigate('/login');
+      navigate(ROUTES.LOGIN);
       return;
     }
 
     if (token) {
       // 백엔드에서 토큰을 쿼리 파라미터로 전달하는 경우
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
-      navigate('/documents');
+      navigate(ROUTES.DOCUMENTS);
     } else {
       // 또는 쿠키로 전달받는 경우 - 별도 처리 불필요
-      navigate('/documents');
+      navigate(ROUTES.DOCUMENTS);
     }
   }, [searchParams, navigate]);
 

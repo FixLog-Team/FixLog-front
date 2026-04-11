@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGoogleLoginCallback } from '@/features/auth/login/hooks/use-google-login';
+import { ROUTES } from '@/shared/constants/routes';
 
 export function LoginCallbackPage() {
   const [searchParams] = useSearchParams();
@@ -8,11 +9,11 @@ export function LoginCallbackPage() {
 
   const { processCallback, isLoading } = useGoogleLoginCallback({
     onSuccess: () => {
-      navigate('/documents');
+      navigate(ROUTES.DOCUMENTS);
     },
     onError: () => {
       alert('로그인에 실패했습니다. 다시 시도해주세요.');
-      navigate('/login');
+      navigate(ROUTES.LOGIN);
     },
   });
 
@@ -22,14 +23,14 @@ export function LoginCallbackPage() {
 
     if (error) {
       alert('Google 인증이 취소되었습니다.');
-      navigate('/login');
+      navigate(ROUTES.LOGIN);
       return;
     }
 
     if (code) {
       processCallback(code);
     } else {
-      navigate('/login');
+      navigate(ROUTES.LOGIN);
     }
   }, [searchParams, processCallback, navigate]);
 
