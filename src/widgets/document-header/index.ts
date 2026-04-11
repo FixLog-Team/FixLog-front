@@ -1,1 +1,1 @@
-export { DocumentHeader } from './ui/DocumentHeader';
+export { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';

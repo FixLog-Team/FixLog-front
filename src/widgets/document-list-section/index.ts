@@ -1,1 +1,1 @@
-export { DocumentListSection } from './ui/DocumentListSection';
+export { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
