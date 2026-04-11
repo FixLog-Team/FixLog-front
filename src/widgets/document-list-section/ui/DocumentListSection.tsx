@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Folder, FileText, Square, CheckSquare, FolderPlus, FilePlus, ChevronRight } from 'lucide-react';
-import type { Document, Folder as FolderType } from '@/shared/types/document';
+import type { Document, Folder as FolderType } from '@/domains/documents/types/document';
 import { TIME_MS } from '@/shared/constants/time';
 
 interface DocumentListSectionProps {
@@ -91,9 +91,9 @@ export function DocumentListSection({
             <DocumentListItem
               key={item.id}
               item={item}
-              isSelected={selectedIds.has(item.id)}
               onToggleSelection={() => handleToggleSelection(item.id)}
               onClick={() => onItemClick?.(item)}
+              isSelected={selectedIds.has(item.id)}
             />
           ))}
         </div>

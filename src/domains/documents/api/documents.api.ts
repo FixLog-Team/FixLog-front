@@ -1,6 +1,6 @@
-import type { Document, Folder } from '@/shared/types/document';
-import { MOCK_DOCUMENTS } from '@/shared/lib/mock-data/documents';
-import { MOCK_DOCUMENT_DETAILS, type DocumentDetail } from '@/shared/lib/mock-data/document-details';
+import type { Document, Folder } from '@/domains/documents/types/document';
+import { MOCK_DOCUMENTS } from '@/domains/documents/lib/mock-data/documents';
+import { MOCK_DOCUMENT_DETAILS, type DocumentDetail } from '@/domains/documents/lib/mock-data/document-details';
 import { API_MOCK_DELAY } from '@/shared/constants/api';
 
 // Re-export DocumentDetail type for convenience

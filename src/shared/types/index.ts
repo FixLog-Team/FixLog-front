@@ -1,1 +1,1 @@
-export type { Document, Folder, TreeItem } from './document';
+// shared types will be added as needed

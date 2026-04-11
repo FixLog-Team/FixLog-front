@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, Calendar } from 'lucide-react';
-import { fetchDocumentDetail } from '@/shared/api/documents.api';
-import type { DocumentDetail } from '@/shared/api/documents.api';
+import { fetchDocumentDetail } from '@/domains/documents/api/documents.api';
+import type { DocumentDetail } from '@/domains/documents/api/documents.api';
 
 export function DocumentDetailPage() {
-  const { documentId } = useParams<{ documentId: string }>();
-  const navigate = useNavigate();
-  const [document, setDocument] = useState<DocumentDetail | null>(null);
+  // State
+  const [documentDetail, setDocumentDetail] = useState<DocumentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch document detail
+  // Hooks
+  const { documentId } = useParams<{ documentId: string }>();
+  const navigate = useNavigate();
+
+  // Functions
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  // Effects
   useEffect(() => {
     const loadDocument = async () => {
       if (!documentId) {
@@ -21,7 +33,7 @@ export function DocumentDetailPage() {
       try {
         setIsLoading(true);
         const data = await fetchDocumentDetail(documentId);
-        setDocument(data);
+        setDocumentDetail(data);
       } catch (error) {
         console.error('Failed to load document:', error);
       } finally {
@@ -42,7 +54,7 @@ export function DocumentDetailPage() {
     );
   }
 
-  if (!document) {
+  if (!documentDetail) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
@@ -63,14 +75,6 @@ export function DocumentDetailPage() {
     );
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   return (
     <div className="h-screen flex flex-col bg-white">
       {/* Header */}
@@ -85,17 +89,17 @@ export function DocumentDetailPage() {
           </button>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            {document.title}
+            {documentDetail.title}
           </h1>
 
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <Calendar size={16} />
-              <span>Created {formatDate(document.createdAt)}</span>
+              <span>Created {formatDate(documentDetail.createdAt)}</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock size={16} />
-              <span>Modified {formatDate(document.modifiedAt)}</span>
+              <span>Modified {formatDate(documentDetail.modifiedAt)}</span>
             </div>
           </div>
         </div>
@@ -106,7 +110,7 @@ export function DocumentDetailPage() {
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="prose prose-lg max-w-none">
             <pre className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed">
-              {document.content}
+              {documentDetail.content}
             </pre>
           </div>
         </div>

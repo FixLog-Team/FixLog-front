@@ -3,34 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/widgets/sidebar/ui/Sidebar';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
-import type { Document, Folder } from '@/shared/types/document';
-import { fetchDocuments } from '@/shared/api/documents.api';
+import type { Document, Folder } from '@/domains/documents/types/document';
+import { fetchDocuments } from '@/domains/documents/api/documents.api';
 
 export function DocumentListPage() {
-  const navigate = useNavigate();
+  // State
   const [documents, setDocuments] = useState<Array<Document | Folder>>([]);
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch documents on mount
-  useEffect(() => {
-    const loadDocuments = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchDocuments();
-        setDocuments(data);
-      } catch (error) {
-        console.error('Failed to load documents:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Hooks
+  const navigate = useNavigate();
 
-    loadDocuments();
-  }, []);
-
-  // Get current folder items based on path
   const currentItems = useMemo(() => {
     if (currentPath.length === 0) {
       return documents;
@@ -89,6 +74,23 @@ export function DocumentListPage() {
       navigate(`/documents/${item.id}`);
     }
   };
+
+  // Effects
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchDocuments();
+        setDocuments(data);
+      } catch (error) {
+        console.error('Failed to load documents:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDocuments();
+  }, []);
 
   if (isLoading) {
     return (

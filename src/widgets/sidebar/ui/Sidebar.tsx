@@ -7,7 +7,7 @@ import {
   FileText,
   Plus,
 } from 'lucide-react';
-import type { Document, Folder as FolderType } from '@/shared/types/document';
+import type { Document, Folder as FolderType } from '@/domains/documents/types/document';
 
 interface SidebarProps {
   items: Array<Document | FolderType>;
@@ -78,6 +78,18 @@ export function Sidebar({ items, selectedDocumentId, currentPath = [], onItemCli
   );
 }
 
+const TREE_ITEM_CLASS_NAME: Record<string, string> = {
+  selected: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
+  inCurrentPath: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+  default: 'text-gray-700 hover:bg-gray-100',
+};
+
+function getTreeItemClassName({ isSelected, isInCurrentPath }: { isSelected: boolean; isInCurrentPath: boolean }) {
+  if (isSelected) return TREE_ITEM_CLASS_NAME.selected;
+  if (isInCurrentPath) return TREE_ITEM_CLASS_NAME.inCurrentPath;
+  return TREE_ITEM_CLASS_NAME.default;
+}
+
 interface TreeItemProps {
   item: FolderType | Document;
   selectedDocumentId?: string | null;
@@ -87,25 +99,18 @@ interface TreeItemProps {
 }
 
 function TreeItem({ item, selectedDocumentId, currentPath = [], parentPath, onItemClick }: TreeItemProps) {
-  const isFolder = item.type === 'folder';
-  const hasChildren = isFolder && item.children && item.children.length > 0;
-  const isSelected = !isFolder && item.id === selectedDocumentId;
-  
-  // Check if this folder is in the current path
-  const isInCurrentPath = isFolder && currentPath.includes(item.name);
-  const isCurrentFolder = isFolder && currentPath.length > 0 && currentPath[currentPath.length - 1] === item.name;
-  
+  // State
   const [isExpanded, setIsExpanded] = useState(
     item.type === 'folder' ? item.isExpanded ?? false : false
   );
 
-  // Auto-expand if this folder is in the current path
-  useEffect(() => {
-    if (isInCurrentPath) {
-      setIsExpanded(true);
-    }
-  }, [isInCurrentPath]);
+  // Variables
+  const isFolder = item.type === 'folder';
+  const hasChildren = isFolder && item.children && item.children.length > 0;
+  const isSelected = !isFolder && item.id === selectedDocumentId;
+  const isInCurrentPath = isFolder && currentPath.includes(item.name);
 
+  // Functions
   const handleToggle = () => {
     if (hasChildren) {
       setIsExpanded(!isExpanded);
@@ -127,16 +132,19 @@ function TreeItem({ item, selectedDocumentId, currentPath = [], parentPath, onIt
     }
   };
 
+  // Effects
+  useEffect(() => {
+    if (isInCurrentPath) {
+      setIsExpanded(true);
+    }
+  }, [isInCurrentPath]);
+
   return (
     <div>
       <button
         onClick={handleClick}
         className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-sm ${
-          isSelected
-            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-            : isInCurrentPath
-            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            : 'text-gray-700 hover:bg-gray-100'
+          getTreeItemClassName({ isSelected, isInCurrentPath })
         }`}
       >
         {hasChildren && (

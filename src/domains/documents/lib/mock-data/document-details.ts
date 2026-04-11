@@ -1,3 +1,5 @@
+import { TIME_MS } from '@/shared/constants/time';
+
 export interface DocumentDetail {
   id: string;
   title: string;
@@ -39,7 +41,7 @@ const token = jwt.sign(
 - JWT Best Practices: https://jwt.io/introduction
 - Team Wiki: Authentication Flow Documentation`,
     createdAt: new Date(2024, 0, 12),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
+    modifiedAt: new Date(Date.now() - TIME_MS.DAY),
   },
   '1-1-2': {
     id: '1-1-2',
@@ -78,7 +80,7 @@ Designing the database schema for the new user management system.
 3. Update application code
 4. Remove old tables`,
     createdAt: new Date(2024, 0, 14),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
+    modifiedAt: new Date(Date.now() - TIME_MS.HOUR * 2),
   },
   '1-2-1': {
     id: '1-2-1',
@@ -150,7 +152,7 @@ Step-by-step guide for migrating our codebase from JavaScript to TypeScript.
 - Week 5: Enable strict mode
 - Week 6: Code review and cleanup`,
     createdAt: new Date(2024, 0, 8),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+    modifiedAt: new Date(Date.now() - TIME_MS.DAY * 3),
   },
   '2-2': {
     id: '2-2',
@@ -201,7 +203,7 @@ services:
 - Shell access: docker exec -it <container_id> sh
 - Restart container: docker restart <container_id>`,
     createdAt: new Date(2024, 0, 5),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
+    modifiedAt: new Date(Date.now() - TIME_MS.WEEK),
   },
   '3-1': {
     id: '3-1',
@@ -257,7 +259,7 @@ git merge feature-branch
 git rebase main
 \`\`\``,
     createdAt: new Date(2024, 0, 1),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
+    modifiedAt: new Date(Date.now() - TIME_MS.WEEK * 2),
   },
   '3-2': {
     id: '3-2',
@@ -310,7 +312,7 @@ git rebase main
 - Chrome DevTools
 - New Relic`,
     createdAt: new Date(2024, 0, 6),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
+    modifiedAt: new Date(Date.now() - TIME_MS.DAY * 5),
   },
   '4': {
     id: '4',
@@ -357,6 +359,6 @@ Rewrites commit history by replaying commits on top of another branch.
 3. Use rebase for feature branches
 4. Always communicate with team`,
     createdAt: new Date(2024, 0, 1),
-    modifiedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
+    modifiedAt: new Date(Date.now() - TIME_MS.WEEK * 2),
   },
 };
