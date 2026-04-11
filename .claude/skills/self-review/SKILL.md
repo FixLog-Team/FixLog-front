@@ -24,7 +24,7 @@ allowed-tools: Bash(git *), Read, Glob, Grep
 
 ### 2. 검사 항목
 
-아래 두 카테고리를 순서대로 검사한다.
+아래 세 카테고리를 순서대로 검사한다.
 
 ---
 
@@ -430,6 +430,119 @@ async function fetchDocument() {
 
 ---
 
+## [C] 컴포넌트 코딩 가이드 (FIXLOG-FRONTEND-COMPONENT-CODING-GUIDE.md)
+
+변경된 `.tsx` / `.ts` 파일을 실제로 읽으며 아래 4개 규칙을 확인한다.
+
+---
+
+### C-1. 컴포넌트 네이밍 규칙
+
+**규칙:**
+- 파일명과 컴포넌트명 모두 **PascalCase** 사용 (첫 글자 대문자)
+- 파일명에 `-`, `_` 사용 금지
+- `camelCase` 컴포넌트명 금지
+
+**체크:**
+- [ ] 컴포넌트 파일명이 PascalCase인가? (예: `DocumentHeader.tsx`)
+- [ ] 파일명과 export 컴포넌트명이 일치하는가?
+- [ ] `-`, `_`로 구분된 파일명이 없는가? (예: `user-profile.tsx` → ❌)
+- [ ] 소문자로 시작하는 컴포넌트명이 없는가? (예: `const userProfile = () => {}` → ❌)
+
+**금지 패턴:**
+```txt
+user-profile.tsx
+user_profile.tsx
+userProfile.tsx
+```
+```tsx
+// 금지: camelCase 컴포넌트명
+const userProfile = () => { return <div />; };
+```
+
+---
+
+### C-2. 컴포넌트 내부 선언 순서
+
+**규칙:**
+컴포넌트 내부 선언은 반드시 아래 순서를 따른다:
+1. 상태 (`useState`, `useReducer`)
+2. 파생/기타 훅 (`useContext`, `useMemo`, `useCallback`, `useRef`, router hook, query hook 등)
+3. 일반 변수
+4. 함수
+5. 부수 효과 (`useEffect`, `useLayoutEffect`)
+6. `return`
+
+**체크:**
+- [ ] `useState` / `useReducer`가 컴포넌트 최상단에 위치하는가?
+- [ ] `useEffect` / `useLayoutEffect`가 함수/변수 선언보다 아래에 있는가?
+- [ ] `return` 이전에 모든 선언이 완료되어 있는가?
+- [ ] effect, 함수, 변수, state가 뒤섞여 있지 않은가?
+
+**금지 패턴:**
+```tsx
+// 금지: effect → 함수 → 변수 → state 순서가 뒤섞임
+export function UserProfile() {
+  useEffect(() => { console.log('mounted'); }, []);
+  const handleClick = () => {};
+  const title = 'profile';
+  const [isOpen, setIsOpen] = useState(false);
+  return <div>{title}</div>;
+}
+```
+
+---
+
+### C-3. JSX Props 전달 순서
+
+**규칙:**
+JSX에서 props를 전달할 때 최하단 3개 구간 순서를 고정한다:
+1. 일반 데이터 props (상단, 자유 배치)
+2. 함수 props (`onClick`, `onChange` 등)
+3. 명시적 boolean props (`isDarkTheme={false}` 등)
+4. 축약형 boolean props (`disabled`, `autoFocus` 등)
+
+**체크:**
+- [ ] 함수 props가 일반 데이터 props보다 아래에 위치하는가?
+- [ ] 축약형 boolean props(`disabled`, `autoFocus`)가 가장 아래에 있는가?
+- [ ] 명시적 boolean과 축약형 boolean이 혼재되어 섞여 있지 않은가?
+
+**금지 패턴:**
+```tsx
+// 금지: disabled(축약 boolean)가 상단에, autoFocus가 중간에 섞임
+<CustomButton
+  disabled
+  title="저장"
+  onClick={handleSave}
+  autoFocus
+  variant="primary"
+  isDarkTheme={false}
+/>
+```
+
+---
+
+### C-4. 절대 경로 import 규칙
+
+**규칙:**
+- `src/` 내부 import는 반드시 `@/` 절대 경로 사용
+- `./`, `../` 상대 경로 import 금지
+- 같은 폴더의 파일을 가져올 때도 절대 경로 사용
+
+**체크:**
+- [ ] `../../`, `../`, `./` 상대 경로 import가 없는가?
+- [ ] `src/` 내부 파일 참조에 `@/` alias를 일관되게 사용하는가?
+
+**금지 패턴:**
+```tsx
+// 금지: 상대 경로 import
+import { Button } from '../../../shared/ui/Button';
+import { formatDate } from '../../shared/lib/utils/date';
+import { RenameDocumentDialog } from './RenameDocumentDialog';
+```
+
+---
+
 ### 3. 리뷰 리포트 출력
 
 ```markdown
@@ -478,12 +591,26 @@ async function fetchDocument() {
 
 ---
 
+## [C] 컴포넌트 코딩 가이드
+
+| # | 규칙 | 상태 | 파일:라인 | 구체적 내용 |
+|---|------|------|----------|------------|
+| C-1 | 컴포넌트 네이밍 (PascalCase) | ✅ / ⚠️ / ❌ | - | - |
+| C-2 | 내부 선언 순서 | | | |
+| C-3 | JSX Props 전달 순서 | | | |
+| C-4 | 절대 경로 import (`@/`) | | | |
+
+**소견**: [전체 컴포넌트 코딩 가이드 평가]
+
+---
+
 ## 종합 평가
 
 | 카테고리 | 결과 |
 |---------|------|
 | A. 프로젝트 구조 | ✅ 통과 / ⚠️ 검토 / ❌ 위반 |
 | B. Code Fundamentals | ✅ 통과 / ⚠️ 검토 / ❌ 위반 |
+| C. 컴포넌트 코딩 가이드 | ✅ 통과 / ⚠️ 검토 / ❌ 위반 |
 
 ### 즉시 수정 필요 (❌)
 
