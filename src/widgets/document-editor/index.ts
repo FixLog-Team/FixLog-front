@@ -1,1 +1,1 @@
-export { DocumentEditor } from './ui/document-editor';
+export { DocumentEditor } from '@/widgets/document-editor/ui/DocumentEditor';

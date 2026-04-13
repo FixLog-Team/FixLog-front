@@ -52,7 +52,11 @@
       "Bash(xargs ls:*)",
       "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/shadcn/src -name *.tsx)",
       "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/react/src -name *.tsx)",
-      "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/react -name *.tsx)"
+      "Bash(find /Users/minhookim/ssu/FixLog-front/node_modules/@blocknote/react -name *.tsx)",
+      "Bash(pnpm dev)",
+      "mcp__serena__read_file",
+      "mcp__serena__replace_content",
+      "mcp__ide__getDiagnostics"
     ]
   },
   "enableAllProjectMcpServers": true,
