@@ -1,82 +1,40 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/widgets/sidebar/ui/Sidebar';
-import type { FolderPathItem } from '@/domains/folders';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
-import { fetchRootFolders, fetchFolderContents } from '@/domains/folders';
-import type { FolderItem, DocumentItem } from '@/domains/folders';
-import { documentDetailPath } from '@/shared/constants/routes';
-
-type BreadcrumbItem = FolderPathItem;
-
-// TODO: 실제 workspaceId는 인증/사용자 정보에서 가져와야 함
-const WORKSPACE_ID = 'WS_TEST';
+import type { Document, Folder } from '@/domains/documents/types/document';
+import { fetchDocuments } from '@/domains/documents/api/documents.api';
 
 export function DocumentListPage() {
   // State
-  const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
+  const [documents, setDocuments] = useState<Array<Document | Folder>>([]);
+  const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Hooks
   const navigate = useNavigate();
 
-  const currentFolderId = breadcrumb.length > 0
-    ? breadcrumb[breadcrumb.length - 1].folderId
-    : null;
-
-  const loadContents = useCallback(async (folderId: string | null) => {
-    try {
-      setIsNavigating(true);
-      const result = folderId
-        ? await fetchFolderContents(folderId, WORKSPACE_ID)
-        : await fetchRootFolders(WORKSPACE_ID);
-      setFolders(result.folders);
-      setDocuments(result.documents);
-    } catch (error) {
-      console.error('Failed to load contents:', error);
-      setFolders([]);
-      setDocuments([]);
-    } finally {
-      setIsNavigating(false);
-      setIsInitialLoad(false);
+  const currentItems = useMemo(() => {
+    if (currentPath.length === 0) {
+      return documents;
     }
-  }, []);
 
-  const handleFolderClick = (folder: FolderItem, path?: FolderPathItem[]) => {
-    if (currentFolderId === folder.folderId) return;
+    let items: Array<Document | Folder> = documents;
+    for (const folderName of currentPath) {
+      const folder = items.find(
+        (item) => item.type === 'folder' && item.name === folderName
+      ) as Folder | undefined;
 
-    if (path) {
-      setBreadcrumb(path);
-    } else {
-      setBreadcrumb((prev) => [
-        ...prev,
-        { folderId: folder.folderId, folderName: folder.folderName },
-      ]);
+      if (folder && folder.children) {
+        items = folder.children;
+      } else {
+        return [];
+      }
     }
-    loadContents(folder.folderId);
-  };
-
-  const handleDocumentClick = (document: DocumentItem) => {
-    setSelectedDocumentId(document.documentId);
-    navigate(documentDetailPath(document.documentId));
-  };
-
-  const handleBreadcrumbClick = (index: number) => {
-    // index 0 = "My Documents" (root)
-    if (index === 0) {
-      setBreadcrumb([]);
-      loadContents(null);
-    } else {
-      const newBreadcrumb = breadcrumb.slice(0, index);
-      setBreadcrumb(newBreadcrumb);
-      loadContents(newBreadcrumb[newBreadcrumb.length - 1].folderId);
-    }
-  };
+    return items;
+  }, [documents, currentPath]);
 
   const handleCreateDocument = () => {
     console.log('Create document clicked');
@@ -90,54 +48,83 @@ export function DocumentListPage() {
     console.log('Search query:', query);
   };
 
+  const handleItemClick = (item: Document | Folder) => {
+    if (item.type === 'folder') {
+      // Navigate into folder
+      setCurrentPath([...currentPath, item.name]);
+    } else {
+      // Set selected document and navigate to detail page
+      setSelectedDocumentId(item.id);
+      navigate(`/documents/${item.id}`);
+    }
+  };
+
+  const handleBreadcrumbClick = (index: number) => {
+    // Navigate to clicked path level
+    setCurrentPath(currentPath.slice(0, index));
+  };
+
+  const handleSidebarItemClick = (item: Document | Folder, itemPath: string[]) => {
+    if (item.type === 'folder') {
+      // Navigate to folder
+      setCurrentPath(itemPath);
+    } else {
+      // Navigate to document detail page
+      setSelectedDocumentId(item.id);
+      navigate(`/documents/${item.id}`);
+    }
+  };
+
   // Effects
   useEffect(() => {
-    loadContents(null);
-  }, [loadContents]);
+    const loadDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchDocuments();
+        setDocuments(data);
+      } catch (error) {
+        console.error('Failed to load documents:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDocuments();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-white items-center justify-center">
+        <p className="text-gray-600">Loading documents...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <Sidebar
-        currentFolderId={currentFolderId}
+        items={documents}
         selectedDocumentId={selectedDocumentId}
-        workspaceId={WORKSPACE_ID}
-        onFolderClick={handleFolderClick}
-        onDocumentClick={handleDocumentClick}
+        currentPath={currentPath}
+        onItemClick={handleSidebarItemClick}
         onCreateDocument={handleCreateDocument}
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Navigation Progress Bar */}
-        {isNavigating && (
-          <div className="h-0.5 bg-gray-100 overflow-hidden">
-            <div className="h-full bg-blue-500 animate-progress" />
-          </div>
-        )}
-
         {/* Header */}
         <DocumentHeader onSearch={handleSearch} />
 
         {/* Document List */}
-        {isInitialLoad ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-gray-600">Loading documents...</p>
-          </div>
-        ) : (
-          <div className={`flex-1 overflow-hidden transition-opacity duration-150 ${isNavigating ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
-            <DocumentListSection
-              folders={folders}
-              documents={documents}
-              breadcrumb={breadcrumb}
-              onFolderClick={handleFolderClick}
-              onDocumentClick={handleDocumentClick}
-              onBreadcrumbClick={handleBreadcrumbClick}
-              onCreateFolder={handleCreateFolder}
-              onCreateDocument={handleCreateDocument}
-            />
-          </div>
-        )}
+        <DocumentListSection
+          items={currentItems}
+          currentPath={currentPath}
+          onItemClick={handleItemClick}
+          onBreadcrumbClick={handleBreadcrumbClick}
+          onCreateFolder={handleCreateFolder}
+          onCreateDocument={handleCreateDocument}
+        />
       </div>
     </div>
   );

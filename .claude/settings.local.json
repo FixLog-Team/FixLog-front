@@ -56,11 +56,7 @@
       "Bash(pnpm dev)",
       "mcp__serena__read_file",
       "mcp__serena__replace_content",
-      "mcp__ide__getDiagnostics",
-      "Bash(ls:*)",
-      "Bash(npx tsc:*)",
-      "Bash(git reset:*)",
-      "Bash(git stash:*)"
+      "mcp__ide__getDiagnostics"
     ]
   },
   "enableAllProjectMcpServers": true,
