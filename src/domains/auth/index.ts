@@ -1,1 +1,2 @@
-// exports will be added as domain files are implemented
+export * from '@/domains/auth/api';
+export * from '@/domains/auth/types';

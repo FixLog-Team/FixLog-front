@@ -16,10 +16,10 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_BACKEND_URL || 'http://localhost:8080',
+          target: env.VITE_BACKEND_URL || 'https://fixlog.art',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, '/fixlog/api'),
+          rewrite: (path) => path.replace(/^\/api/, '/fixlog'),
         },
       },
     },

@@ -1,11 +1,9 @@
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
-  DOCUMENT_DETAIL: '/documents/:documentId',
+  LOGIN_CALLBACK: '/login/callback',
+  DOCUMENTS: '/documents',
+  DOCUMENT_EDITOR: '/documents/:documentId',
   DOCUMENT_HISTORY: '/documents/:documentId/history',
   SEARCH: '/search',
 } as const;
-
-export function documentDetailPath(documentId: string) {
-  return `/documents/${documentId}`;
-}
