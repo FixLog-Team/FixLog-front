@@ -162,11 +162,11 @@ src/
 
   shared/
     ui/
-      button.tsx
-      input.tsx
-      dialog.tsx
-      spinner.tsx
-      badge.tsx
+      Button.tsx
+      Input.tsx
+      Dialog.tsx
+      Spinner.tsx
+      Badge.tsx
     lib/
       http/
         client.ts
@@ -198,9 +198,9 @@ src/
         use-document-query.ts
         use-document-list-query.ts
       ui/
-        document-title.tsx
-        document-status-badge.tsx
-        document-icon.tsx
+        DocumentTitle.tsx
+        DocumentStatusBadge.tsx
+        DocumentIcon.tsx
       lib/
         map-document-status.ts
       index.ts
@@ -227,8 +227,8 @@ src/
         hooks/
           use-create-document.ts
         ui/
-          create-document-button.tsx
-          create-document-dialog.tsx
+          CreateDocumentButton.tsx
+          CreateDocumentDialog.tsx
         types/
           create-document.schema.ts
 
@@ -236,8 +236,8 @@ src/
         hooks/
           use-rename-document.ts
         ui/
-          rename-document-button.tsx
-          rename-document-dialog.tsx
+          RenameDocumentButton.tsx
+          RenameDocumentDialog.tsx
         types/
           rename-document.schema.ts
 
@@ -245,15 +245,15 @@ src/
         hooks/
           use-delete-document.ts
         ui/
-          delete-document-button.tsx
-          delete-document-dialog.tsx
+          DeleteDocumentButton.tsx
+          DeleteDocumentDialog.tsx
 
       upload-document/
         hooks/
           use-upload-document.ts
         ui/
-          upload-document-button.tsx
-          upload-document-dialog.tsx
+          UploadDocumentButton.tsx
+          UploadDocumentDialog.tsx
 
     workspace/
       create-workspace/
@@ -262,46 +262,46 @@ src/
   widgets/
     document-header/
       ui/
-        document-header.tsx
+        DocumentHeader.tsx
 
     document-editor/
       ui/
-        document-editor.tsx
+        DocumentEditor.tsx
 
     document-activity-panel/
       ui/
-        document-activity-panel.tsx
+        DocumentActivityPanel.tsx
 
     document-list-section/
       ui/
-        document-list-section.tsx
-        document-list-toolbar.tsx
+        DocumentListSection.tsx
+        DocumentListToolbar.tsx
 
     sidebar/
       ui/
-        sidebar.tsx
-        workspace-list.tsx
+        Sidebar.tsx
+        WorkspaceList.tsx
 
   pages/
     document-detail/
       ui/
-        document-detail-page.tsx
+        DocumentDetailPage.tsx
       hooks/
         use-document-detail-page.ts
 
     document-list/
       ui/
-        document-list-page.tsx
+        DocumentListPage.tsx
       hooks/
         use-document-list-page.ts
 
     workspace-detail/
       ui/
-        workspace-detail-page.tsx
+        WorkspaceDetailPage.tsx
 
     settings/
       ui/
-        settings-page.tsx
+        SettingsPage.tsx
 ```
 
 ---
@@ -338,8 +338,8 @@ domains/documents/
     use-document-query.ts
     use-document-list-query.ts
   ui/
-    document-title.tsx
-    document-status-badge.tsx
+    DocumentTitle.tsx
+    DocumentStatusBadge.tsx
   lib/
     map-document-status.ts
 ```
@@ -430,7 +430,7 @@ export function useDocumentQuery(documentId: string) {
 - `DocumentIcon`
 
 ```tsx
-// domains/documents/ui/document-title.tsx
+// domains/documents/ui/DocumentTitle.tsx
 interface Props {
   title: string;
 }
@@ -484,8 +484,8 @@ features/documents/rename-document/
   hooks/
     use-rename-document.ts
   ui/
-    rename-document-button.tsx
-    rename-document-dialog.tsx
+    RenameDocumentButton.tsx
+    RenameDocumentDialog.tsx
   types/
     rename-document.schema.ts
 ```
@@ -557,9 +557,9 @@ export function useRenameDocument(documentId: string) {
 ### feature ui
 
 ```tsx
-// features/documents/rename-document/ui/rename-document-button.tsx
+// features/documents/rename-document/ui/RenameDocumentButton.tsx
 import { useState } from 'react';
-import { RenameDocumentDialog } from './rename-document-dialog';
+import { RenameDocumentDialog } from './RenameDocumentDialog';
 
 interface Props {
   documentId: string;
@@ -639,15 +639,15 @@ export function RenameDocumentButton({ documentId, initialTitle }: Props) {
 ```txt
 widgets/document-header/
   ui/
-    document-header.tsx
+    DocumentHeader.tsx
 ```
 
 ```tsx
-// widgets/document-header/ui/document-header.tsx
-import { DocumentTitle } from '@/domains/documents/ui/document-title';
-import { DocumentStatusBadge } from '@/domains/documents/ui/document-status-badge';
-import { RenameDocumentButton } from '@/features/documents/rename-document/ui/rename-document-button';
-import { DeleteDocumentButton } from '@/features/documents/delete-document/ui/delete-document-button';
+// widgets/document-header/ui/DocumentHeader.tsx
+import { DocumentTitle } from '@/domains/documents/ui/DocumentTitle';
+import { DocumentStatusBadge } from '@/domains/documents/ui/DocumentStatusBadge';
+import { RenameDocumentButton } from '@/features/documents/rename-document/ui/RenameDocumentButton';
+import { DeleteDocumentButton } from '@/features/documents/delete-document/ui/DeleteDocumentButton';
 
 interface Props {
   documentId: string;
@@ -705,16 +705,16 @@ page는 다음 역할을 한다.
 ```txt
 pages/document-detail/
   ui/
-    document-detail-page.tsx
+    DocumentDetailPage.tsx
 ```
 
 ```tsx
-// pages/document-detail/ui/document-detail-page.tsx
+// pages/document-detail/ui/DocumentDetailPage.tsx
 import { useParams } from 'react-router-dom';
 import { useDocumentQuery } from '@/domains/documents/hooks/use-document-query';
-import { DocumentHeader } from '@/widgets/document-header/ui/document-header';
-import { DocumentEditor } from '@/widgets/document-editor/ui/document-editor';
-import { DocumentActivityPanel } from '@/widgets/document-activity-panel/ui/document-activity-panel';
+import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
+import { DocumentEditor } from '@/widgets/document-editor/ui/DocumentEditor';
+import { DocumentActivityPanel } from '@/widgets/document-activity-panel/ui/DocumentActivityPanel';
 
 export function DocumentDetailPage() {
   const { documentId = '' } = useParams();
