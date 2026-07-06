@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar } from '@/widgets/sidebar/ui/Sidebar';
+import { AppShell } from '@/widgets/app-shell';
 import type { FolderPathItem } from '@/domains/folders';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
@@ -18,20 +18,17 @@ export function DocumentListPage() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
 
   // Hooks
   const navigate = useNavigate();
 
-  const currentFolderId = breadcrumb.length > 0
-    ? breadcrumb[breadcrumb.length - 1].folderId
-    : null;
+  // Variables
+  const currentFolderId =
+    breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].folderId : null;
 
+  // Functions
   const loadContents = useCallback(async (folderId: string | null) => {
     try {
-      setIsNavigating(true);
       const result = folderId
         ? await fetchFolderContents(folderId, WORKSPACE_ID)
         : await fetchRootFolders(WORKSPACE_ID);
@@ -41,15 +38,11 @@ export function DocumentListPage() {
       console.error('Failed to load contents:', error);
       setFolders([]);
       setDocuments([]);
-    } finally {
-      setIsNavigating(false);
-      setIsInitialLoad(false);
     }
   }, []);
 
   const handleFolderClick = (folder: FolderItem, path?: FolderPathItem[]) => {
     if (currentFolderId === folder.folderId) return;
-
     if (path) {
       setBreadcrumb(path);
     } else {
@@ -62,12 +55,10 @@ export function DocumentListPage() {
   };
 
   const handleDocumentClick = (document: DocumentItem) => {
-    setSelectedDocumentId(document.documentId);
     navigate(documentDetailPath(document.documentId));
   };
 
   const handleBreadcrumbClick = (index: number) => {
-    // index 0 = "My Documents" (root)
     if (index === 0) {
       setBreadcrumb([]);
       loadContents(null);
@@ -95,50 +86,19 @@ export function DocumentListPage() {
     loadContents(null);
   }, [loadContents]);
 
+  // Render
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar */}
-      <Sidebar
-        currentFolderId={currentFolderId}
-        selectedDocumentId={selectedDocumentId}
-        workspaceId={WORKSPACE_ID}
+    <AppShell header={<DocumentHeader onSearch={handleSearch} />}>
+      <DocumentListSection
+        folders={folders}
+        documents={documents}
+        breadcrumb={breadcrumb}
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}
+        onBreadcrumbClick={handleBreadcrumbClick}
+        onCreateFolder={handleCreateFolder}
         onCreateDocument={handleCreateDocument}
       />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Navigation Progress Bar */}
-        {isNavigating && (
-          <div className="h-0.5 bg-gray-100 overflow-hidden">
-            <div className="h-full bg-blue-500 animate-progress" />
-          </div>
-        )}
-
-        {/* Header */}
-        <DocumentHeader onSearch={handleSearch} />
-
-        {/* Document List */}
-        {isInitialLoad ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-gray-600">Loading documents...</p>
-          </div>
-        ) : (
-          <div className={`flex-1 overflow-hidden transition-opacity duration-150 ${isNavigating ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
-            <DocumentListSection
-              folders={folders}
-              documents={documents}
-              breadcrumb={breadcrumb}
-              onFolderClick={handleFolderClick}
-              onDocumentClick={handleDocumentClick}
-              onBreadcrumbClick={handleBreadcrumbClick}
-              onCreateFolder={handleCreateFolder}
-              onCreateDocument={handleCreateDocument}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+    </AppShell>
   );
 }
