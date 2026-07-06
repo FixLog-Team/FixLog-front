@@ -21,7 +21,7 @@ export function LoginCallbackPage() {
 
     if (accessToken) {
       saveTokens(accessToken, refreshToken ?? undefined);
-      navigate(ROUTES.HOME);
+      navigate(ROUTES.WORKSPACE);
     } else {
       alert('로그인에 실패했습니다. 다시 시도해주세요.');
       navigate(ROUTES.LOGIN);
