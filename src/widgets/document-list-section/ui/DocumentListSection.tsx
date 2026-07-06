@@ -1,224 +1,141 @@
-import { useState } from 'react';
-import { Folder, FileText, Square, CheckSquare, FolderPlus, FilePlus, ChevronRight } from 'lucide-react';
-import type { FolderItem, DocumentItem } from '@/domains/folders';
-import { TIME_MS } from '@/shared/constants/time';
-
-interface BreadcrumbItem {
-  folderId: string;
-  folderName: string;
-}
+import { Link } from 'react-router-dom';
+import {
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Sparkles,
+  Folder,
+  FileText,
+} from 'lucide-react';
+import { Input } from '@/shared/ui/input';
+import { Button } from '@/shared/ui/button';
+import { Badge } from '@/shared/ui/badge';
+import { Avatar } from '@/shared/ui/avatar';
+import { ROUTES } from '@/shared/constants/routes';
+import type { DemoFolder } from '@/domains/folders/lib/mock-data/folders';
+import {
+  type DemoDocument,
+  STATUS_LABEL,
+} from '@/domains/documents/lib/mock-data/demo-documents';
 
 interface DocumentListSectionProps {
-  folders: FolderItem[];
-  documents: DocumentItem[];
-  breadcrumb: BreadcrumbItem[];
-  onFolderClick?: (folder: FolderItem) => void;
-  onDocumentClick?: (document: DocumentItem) => void;
-  onBreadcrumbClick: (index: number) => void;
-  onCreateFolder?: () => void;
-  onCreateDocument?: () => void;
+  folders: DemoFolder[];
+  documents: DemoDocument[];
+  onFolderClick?: (folder: DemoFolder) => void;
+  onDocumentClick?: (document: DemoDocument) => void;
 }
+
+// Name | Type | Owner | Last updated | Status
+const GRID =
+  'grid grid-cols-[minmax(0,1fr)_120px_180px_150px_120px] items-center';
 
 export function DocumentListSection({
   folders,
   documents,
-  breadcrumb,
   onFolderClick,
   onDocumentClick,
-  onBreadcrumbClick,
-  onCreateFolder,
-  onCreateDocument,
 }: DocumentListSectionProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  const handleToggleSelection = (id: string) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
   return (
-    <div className="flex-1 overflow-y-auto bg-white">
-      {/* Breadcrumb and Actions */}
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-2xl font-semibold">
-          <button
-            onClick={() => onBreadcrumbClick(0)}
-            className="text-gray-900 hover:text-blue-600 transition-colors"
-          >
-            My Documents
-          </button>
-
-          {breadcrumb.map((item, index) => (
-            <div key={item.folderId} className="flex items-center gap-2">
-              <ChevronRight size={20} className="text-gray-400" />
-              <button
-                onClick={() => onBreadcrumbClick(index + 1)}
-                className={`transition-colors ${
-                  index === breadcrumb.length - 1
-                    ? 'text-gray-900'
-                    : 'text-gray-600 hover:text-blue-600'
-                }`}
-              >
-                {item.folderName}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onCreateFolder}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium text-gray-700"
-          >
-            <FolderPlus size={18} />
-            <span>Create Folder</span>
-          </button>
-
-          <button
-            onClick={onCreateDocument}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            <FilePlus size={18} />
-            <span>Create Document</span>
-          </button>
-        </div>
+    <div className="mx-auto max-w-6xl px-6 py-6">
+      {/* Search + filters */}
+      <div className="flex items-center gap-3">
+        <Input
+          className="h-11 flex-1"
+          icon={<Search />}
+          placeholder="Search this workspace..."
+        />
+        <Button variant="secondary" className="h-11">
+          <SlidersHorizontal />
+          Filter
+        </Button>
+        <Button variant="secondary" className="h-11">
+          <ArrowUpDown />
+          Sort
+        </Button>
       </div>
 
-      {/* Content List */}
-      <div className="px-6 py-4">
-        {folders.length === 0 && documents.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">폴더가 비었습니다.</p>
-        ) : (
-          <div className="space-y-1">
-            {/* Folders */}
-            {folders.map((folder) => (
-              <ListItem
-                key={folder.folderId}
-                id={folder.folderId}
-                name={folder.folderName}
-                type="folder"
-                updatedAt={folder.updateTime}
-                isSelected={selectedIds.has(folder.folderId)}
-                onToggleSelection={() => handleToggleSelection(folder.folderId)}
-                onClick={() => onFolderClick?.(folder)}
-              />
-            ))}
-
-            {/* Documents */}
-            {documents.map((doc) => (
-              <ListItem
-                key={doc.documentId}
-                id={doc.documentId}
-                name={doc.title}
-                type="document"
-                updatedAt={doc.updateTime}
-                isSelected={selectedIds.has(doc.documentId)}
-                onToggleSelection={() => handleToggleSelection(doc.documentId)}
-                onClick={() => onDocumentClick?.(doc)}
-              />
-            ))}
-          </div>
-        )}
+      {/* AI Search hint banner */}
+      <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+        <Sparkles className="size-4 shrink-0 text-primary" />
+        <span className="text-foreground">
+          Not sure where a document lives?{' '}
+          <Link
+            to={ROUTES.SEARCH}
+            className="font-medium text-primary hover:underline"
+          >
+            Use AI Search
+          </Link>{' '}
+          to find it by meaning.
+        </span>
       </div>
-    </div>
-  );
-}
 
-interface ListItemProps {
-  id: string;
-  name: string;
-  type: 'folder' | 'document';
-  updatedAt: string;
-  isSelected: boolean;
-  onToggleSelection: () => void;
-  onClick?: () => void;
-}
-
-function ListItem({
-  name,
-  type,
-  updatedAt,
-  isSelected,
-  onToggleSelection,
-  onClick,
-}: ListItemProps) {
-  const isFolder = type === 'folder';
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInDays = Math.floor(diffInMs / TIME_MS.DAY);
-
-    if (diffInDays === 0) {
-      return 'Today';
-    } else if (diffInDays === 1) {
-      return 'Yesterday';
-    } else if (diffInDays < 7) {
-      return `${diffInDays} days ago`;
-    } else {
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-      });
-    }
-  };
-
-  const handleCheckboxClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleSelection();
-  };
-
-  return (
-    <div
-      className={`w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer ${
-        isSelected ? 'bg-blue-50' : ''
-      }`}
-      onClick={onClick}
-    >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        {/* Checkbox */}
-        <button
-          onClick={handleCheckboxClick}
-          className="flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+      {/* Table */}
+      <div className="mt-6">
+        <div
+          className={`${GRID} border-b border-border px-4 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground`}
         >
-          {isSelected ? (
-            <CheckSquare size={20} className="text-blue-600" />
-          ) : (
-            <Square size={20} />
-          )}
-        </button>
-
-        {/* Icon */}
-        <div className="flex-shrink-0">
-          {isFolder ? (
-            <Folder className="text-gray-400 group-hover:text-blue-500" size={20} />
-          ) : (
-            <FileText className="text-gray-400 group-hover:text-blue-500" size={20} />
-          )}
+          <span>Name</span>
+          <span>Type</span>
+          <span>Owner</span>
+          <span>Last updated</span>
+          <span className="text-right">Status</span>
         </div>
 
-        {/* Name */}
-        <span className="text-sm font-medium text-gray-900 truncate">
-          {name}
-        </span>
-      </div>
+        {folders.map((folder) => (
+          <button
+            key={folder.id}
+            type="button"
+            onClick={() => onFolderClick?.(folder)}
+            className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <Folder className="size-[18px] shrink-0 text-primary" />
+              <span className="truncate font-medium text-foreground">
+                {folder.name}
+              </span>
+            </span>
+            <span className="text-muted-foreground">Folder</span>
+            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">{folder.updatedLabel}</span>
+            <span className="text-right text-muted-foreground">
+              {folder.itemCount} items
+            </span>
+          </button>
+        ))}
 
-      {/* Modified Date */}
-      <div className="flex-shrink-0 ml-4">
-        <span className="text-sm text-gray-500">
-          {formatDate(updatedAt)}
-        </span>
+        {documents.map((doc) => (
+          <button
+            key={doc.id}
+            type="button"
+            onClick={() => onDocumentClick?.(doc)}
+            className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <FileText className="size-[18px] shrink-0 text-muted-foreground" />
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-foreground">
+                  {doc.title}
+                </span>
+                <span className="mt-1 flex flex-wrap gap-1">
+                  {doc.tags.map((tag) => (
+                    <Badge key={tag} variant="tag">
+                      {tag}
+                    </Badge>
+                  ))}
+                </span>
+              </span>
+            </span>
+            <span className="text-muted-foreground">Document</span>
+            <span className="flex items-center gap-2 text-foreground">
+              <Avatar name={doc.owner} size="sm" />
+              <span className="truncate">{doc.owner}</span>
+            </span>
+            <span className="text-muted-foreground">{doc.updatedLabel}</span>
+            <span className="flex justify-end">
+              <Badge variant={doc.status}>{STATUS_LABEL[doc.status]}</Badge>
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
