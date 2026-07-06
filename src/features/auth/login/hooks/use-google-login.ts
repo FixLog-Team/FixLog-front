@@ -8,7 +8,7 @@ interface UseGoogleLoginOptions {
   onError?: (error: Error) => void;
 }
 
-export function useGoogleLogin(options?: UseGoogleLoginOptions) {
+export function useGoogleLogin(_options?: UseGoogleLoginOptions) {
   const startGoogleLogin = () => {
     // Spring Security OAuth2 엔드포인트로 직접 이동
     // 302 리다이렉트를 브라우저가 자동으로 처리
