@@ -5,3 +5,7 @@ dist
 .mcp.json
 .serena
 .omc
+
+# OS / tooling
+.DS_Store
+.bkit
