@@ -11,6 +11,7 @@ import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
 import { ROUTES } from '@/shared/constants/routes';
+import { ItemActionsMenu } from '@/widgets/item-actions';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 
@@ -20,10 +21,12 @@ interface DocumentListSectionProps {
   isLoading?: boolean;
   onFolderClick?: (folder: FolderItem) => void;
   onDocumentClick?: (document: DocumentDto) => void;
+  /** 이름변경/이동/삭제/복제 후 목록을 다시 불러오기 위한 콜백. */
+  onChanged?: () => void;
 }
 
-// Name | Type | Owner | Last updated
-const GRID = 'grid grid-cols-[minmax(0,1fr)_120px_180px_150px] items-center';
+// Name | Type | Owner | Last updated | Actions(⋮)
+const GRID = 'grid grid-cols-[minmax(0,1fr)_120px_180px_150px_48px] items-center';
 
 function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return '—';
@@ -36,14 +39,26 @@ function formatUpdated(dateStr: string | null): string {
   });
 }
 
+/** Enter/Space 로 행을 여는 키보드 핸들러(행이 div[role=button] 라 필요). */
+function rowKeyHandler(open: () => void) {
+  return (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      open();
+    }
+  };
+}
+
 export function DocumentListSection({
   folders,
   documents,
   isLoading = false,
   onFolderClick,
   onDocumentClick,
+  onChanged,
 }: DocumentListSectionProps) {
   const isEmpty = folders.length === 0 && documents.length === 0;
+  const notifyChanged = () => onChanged?.();
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -88,6 +103,7 @@ export function DocumentListSection({
           <span>Type</span>
           <span>Owner</span>
           <span className="text-right">Last updated</span>
+          <span />
         </div>
 
         {isLoading ? (
@@ -101,11 +117,13 @@ export function DocumentListSection({
         ) : (
           <>
             {folders.map((folder) => (
-              <button
+              <div
                 key={folder.folderId}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onFolderClick?.(folder)}
-                className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
+                onKeyDown={rowKeyHandler(() => onFolderClick?.(folder))}
+                className={`${GRID} w-full cursor-pointer border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <Folder className="size-[18px] shrink-0 text-primary" />
@@ -118,15 +136,28 @@ export function DocumentListSection({
                 <span className="text-right text-muted-foreground">
                   {formatUpdated(folder.updateTime)}
                 </span>
-              </button>
+                <span className="flex justify-end">
+                  <ItemActionsMenu
+                    target={{
+                      kind: 'folder',
+                      id: folder.folderId,
+                      name: folder.folderName,
+                      parentId: folder.parentId,
+                    }}
+                    onChanged={notifyChanged}
+                  />
+                </span>
+              </div>
             ))}
 
             {documents.map((doc) => (
-              <button
+              <div
                 key={doc.documentId}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onDocumentClick?.(doc)}
-                className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
+                onKeyDown={rowKeyHandler(() => onDocumentClick?.(doc))}
+                className={`${GRID} w-full cursor-pointer border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <FileText className="size-[18px] shrink-0 text-muted-foreground" />
@@ -139,7 +170,13 @@ export function DocumentListSection({
                 <span className="text-right text-muted-foreground">
                   {formatUpdated(doc.updateTime)}
                 </span>
-              </button>
+                <span className="flex justify-end">
+                  <ItemActionsMenu
+                    target={{ kind: 'document', id: doc.documentId, name: doc.title }}
+                    onChanged={notifyChanged}
+                  />
+                </span>
+              </div>
             ))}
           </>
         )}
