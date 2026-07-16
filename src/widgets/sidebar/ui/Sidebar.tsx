@@ -7,7 +7,8 @@ import {
   FileText,
   Plus,
 } from 'lucide-react';
-import type { FolderItem, DocumentItem, FolderPathItem } from '@/domains/folders';
+import type { FolderItem, FolderPathItem } from '@/domains/folders';
+import type { DocumentDto } from '@/domains/documents';
 import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
 import { useFolderChildren } from '@/domains/folders/hooks/use-folder-children';
 import { LAYOUT } from '@/shared/constants/layout';
@@ -15,16 +16,14 @@ import { LAYOUT } from '@/shared/constants/layout';
 interface SidebarProps {
   currentFolderId?: string | null;
   selectedDocumentId?: string | null;
-  workspaceId: string;
   onFolderClick?: (folder: FolderItem, path: FolderPathItem[]) => void;
-  onDocumentClick?: (document: DocumentItem) => void;
+  onDocumentClick?: (document: DocumentDto) => void;
   onCreateDocument?: () => void;
 }
 
 export function Sidebar({
   currentFolderId,
   selectedDocumentId,
-  workspaceId,
   onFolderClick,
   onDocumentClick,
   onCreateDocument,
@@ -32,7 +31,7 @@ export function Sidebar({
   const [isMyDocumentsExpanded, setIsMyDocumentsExpanded] = useState(true);
 
   const { folders: rootFolders, documents: rootDocuments, isLoaded } =
-    useRootFolders(workspaceId, isMyDocumentsExpanded);
+    useRootFolders(isMyDocumentsExpanded);
 
   return (
     <aside style={{ width: LAYOUT.SIDEBAR_WIDTH }} className="h-screen bg-white border-r border-gray-200 flex flex-col">
@@ -74,7 +73,6 @@ export function Sidebar({
                   key={folder.folderId}
                   folder={folder}
                   parentPath={[]}
-                  workspaceId={workspaceId}
                   currentFolderId={currentFolderId}
                   selectedDocumentId={selectedDocumentId}
                   onFolderClick={onFolderClick}
@@ -100,17 +98,15 @@ export function Sidebar({
 interface SidebarFolderItemProps {
   folder: FolderItem;
   parentPath: FolderPathItem[];
-  workspaceId: string;
   currentFolderId?: string | null;
   selectedDocumentId?: string | null;
   onFolderClick?: (folder: FolderItem, path: FolderPathItem[]) => void;
-  onDocumentClick?: (document: DocumentItem) => void;
+  onDocumentClick?: (document: DocumentDto) => void;
 }
 
 function SidebarFolderItem({
   folder,
   parentPath,
-  workspaceId,
   currentFolderId,
   selectedDocumentId,
   onFolderClick,
@@ -119,7 +115,7 @@ function SidebarFolderItem({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const { childFolders, childDocuments, isLoaded, loadChildren } =
-    useFolderChildren(folder.folderId, workspaceId);
+    useFolderChildren(folder.folderId);
 
   const isCurrentFolder = folder.folderId === currentFolderId;
 
@@ -194,7 +190,6 @@ function SidebarFolderItem({
               key={child.folderId}
               folder={child}
               parentPath={currentPath}
-              workspaceId={workspaceId}
               currentFolderId={currentFolderId}
               selectedDocumentId={selectedDocumentId}
               onFolderClick={onFolderClick}
@@ -216,7 +211,7 @@ function SidebarFolderItem({
 }
 
 interface SidebarDocumentItemProps {
-  document: DocumentItem;
+  document: DocumentDto;
   isSelected: boolean;
   onClick: () => void;
 }

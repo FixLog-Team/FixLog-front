@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Folder, FileText, Square, CheckSquare, FolderPlus, FilePlus, ChevronRight } from 'lucide-react';
-import type { FolderItem, DocumentItem } from '@/domains/folders';
+import type { FolderItem } from '@/domains/folders';
+import type { DocumentDto } from '@/domains/documents';
 import { TIME_MS } from '@/shared/constants/time';
 
 interface BreadcrumbItem {
@@ -10,10 +11,10 @@ interface BreadcrumbItem {
 
 interface DocumentListSectionProps {
   folders: FolderItem[];
-  documents: DocumentItem[];
+  documents: DocumentDto[];
   breadcrumb: BreadcrumbItem[];
   onFolderClick?: (folder: FolderItem) => void;
-  onDocumentClick?: (document: DocumentItem) => void;
+  onDocumentClick?: (document: DocumentDto) => void;
   onBreadcrumbClick: (index: number) => void;
   onCreateFolder?: () => void;
   onCreateDocument?: () => void;
@@ -137,7 +138,7 @@ interface ListItemProps {
   id: string;
   name: string;
   type: 'folder' | 'document';
-  updatedAt: string;
+  updatedAt: string | null;
   isSelected: boolean;
   onToggleSelection: () => void;
   onClick?: () => void;
@@ -153,7 +154,8 @@ function ListItem({
 }: ListItemProps) {
   const isFolder = type === 'folder';
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '';
     const date = new Date(dateStr);
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
