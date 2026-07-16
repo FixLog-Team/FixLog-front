@@ -1,40 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Sidebar } from '@/widgets/sidebar/ui/Sidebar';
-import type { FolderPathItem } from '@/domains/folders';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AppShell } from '@/widgets/app-shell';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
-import { fetchRootFolders, fetchFolderContents } from '@/domains/folders';
-import type { FolderItem, DocumentItem } from '@/domains/folders';
+import { foldersApi } from '@/domains/folders';
+import type { FolderItem, FolderPathItem } from '@/domains/folders';
+import type { DocumentDto } from '@/domains/documents';
+import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
+import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
 import { documentDetailPath } from '@/shared/constants/routes';
 
-type BreadcrumbItem = FolderPathItem;
-
-// TODO: 실제 workspaceId는 인증/사용자 정보에서 가져와야 함
-const WORKSPACE_ID = 'WS_TEST';
-
 export function DocumentListPage() {
-  // State
-  const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
-
   // Hooks
   const navigate = useNavigate();
+  const location = useLocation();
+  const createDocument = useCreateDocument();
+  const createFolder = useCreateFolder();
 
-  const currentFolderId = breadcrumb.length > 0
-    ? breadcrumb[breadcrumb.length - 1].folderId
-    : null;
+  // State
+  const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [documents, setDocuments] = useState<DocumentDto[]>([]);
+  const [breadcrumb, setBreadcrumb] = useState<FolderPathItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Variables
+  const currentFolderId =
+    breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].folderId : null;
+
+  // Functions
   const loadContents = useCallback(async (folderId: string | null) => {
     try {
-      setIsNavigating(true);
+      setIsLoading(true);
       const result = folderId
-        ? await fetchFolderContents(folderId, WORKSPACE_ID)
-        : await fetchRootFolders(WORKSPACE_ID);
+        ? await foldersApi.getFolderContents(folderId)
+        : await foldersApi.getRootContents();
       setFolders(result.folders);
       setDocuments(result.documents);
     } catch (error) {
@@ -42,28 +41,24 @@ export function DocumentListPage() {
       setFolders([]);
       setDocuments([]);
     } finally {
-      setIsNavigating(false);
-      setIsInitialLoad(false);
+      setIsLoading(false);
     }
   }, []);
 
-  const handleFolderClick = (folder: FolderItem, path?: FolderPathItem[]) => {
+  const handleFolderClick = (folder: FolderItem) => {
     if (currentFolderId === folder.folderId) return;
-
-    if (path) {
-      setBreadcrumb(path);
-    } else {
-      setBreadcrumb((prev) => [
-        ...prev,
-        { folderId: folder.folderId, folderName: folder.folderName },
-      ]);
-    }
+    setBreadcrumb((prev) => [
+      ...prev,
+      { folderId: folder.folderId, folderName: folder.folderName },
+    ]);
     loadContents(folder.folderId);
   };
 
-  const handleDocumentClick = (document: DocumentItem) => {
-    setSelectedDocumentId(document.documentId);
-    navigate(documentDetailPath(document.documentId));
+  const handleDocumentClick = (document: DocumentDto) => {
+    // 현재 폴더 경로를 함께 넘겨 에디터 breadcrumb 가 진입 경로를 유지하도록 한다.
+    navigate(documentDetailPath(document.documentId), {
+      state: { folderPath: breadcrumb },
+    });
   };
 
   const handleBreadcrumbClick = (index: number) => {
@@ -71,74 +66,80 @@ export function DocumentListPage() {
     if (index === 0) {
       setBreadcrumb([]);
       loadContents(null);
-    } else {
-      const newBreadcrumb = breadcrumb.slice(0, index);
-      setBreadcrumb(newBreadcrumb);
-      loadContents(newBreadcrumb[newBreadcrumb.length - 1].folderId);
+      return;
+    }
+    const next = breadcrumb.slice(0, index);
+    setBreadcrumb(next);
+    loadContents(next[next.length - 1].folderId);
+  };
+
+  const handleCreateDocument = async () => {
+    try {
+      const created = await createDocument.mutateAsync({
+        folderId: currentFolderId,
+        title: 'Untitled',
+      });
+      navigate(documentDetailPath(created.documentId));
+    } catch (error) {
+      console.error('Failed to create document:', error);
     }
   };
 
-  const handleCreateDocument = () => {
-    console.log('Create document clicked');
-  };
-
-  const handleCreateFolder = () => {
-    console.log('Create folder clicked');
-  };
-
-  const handleSearch = (query: string) => {
-    console.log('Search query:', query);
+  const handleCreateFolder = async () => {
+    const folderName = window.prompt('폴더 이름을 입력하세요', 'New Folder');
+    if (!folderName) return;
+    try {
+      await createFolder.mutateAsync({ parentId: currentFolderId, folderName });
+      loadContents(currentFolderId);
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+    }
   };
 
   // Effects
   useEffect(() => {
-    loadContents(null);
+    // 에디터 breadcrumb 등에서 넘어온 폴더 경로가 있으면 그 폴더로 복원한다.
+    const incoming = (
+      location.state as { folderPath?: FolderPathItem[] } | null
+    )?.folderPath;
+    if (incoming && incoming.length > 0) {
+      setBreadcrumb(incoming);
+      loadContents(incoming[incoming.length - 1].folderId);
+    } else {
+      setBreadcrumb([]);
+      loadContents(null);
+    }
+    // 최초 마운트 시 1회만 복원(loadContents 는 안정적).
   }, [loadContents]);
 
+  // Variables (render)
+  const crumbs = [
+    { label: 'My Documents', onClick: () => handleBreadcrumbClick(0) },
+    ...breadcrumb.map((item, index) => ({
+      label: item.folderName,
+      onClick: () => handleBreadcrumbClick(index + 1),
+    })),
+  ];
+
+  // Render
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar */}
-      <Sidebar
-        currentFolderId={currentFolderId}
-        selectedDocumentId={selectedDocumentId}
-        workspaceId={WORKSPACE_ID}
+    <AppShell
+      header={
+        <DocumentHeader
+          mode="list"
+          breadcrumb={crumbs}
+          onCreateFolder={handleCreateFolder}
+          onCreateDocument={handleCreateDocument}
+        />
+      }
+    >
+      <DocumentListSection
+        folders={folders}
+        documents={documents}
+        isLoading={isLoading}
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}
-        onCreateDocument={handleCreateDocument}
       />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Navigation Progress Bar */}
-        {isNavigating && (
-          <div className="h-0.5 bg-gray-100 overflow-hidden">
-            <div className="h-full bg-blue-500 animate-progress" />
-          </div>
-        )}
-
-        {/* Header */}
-        <DocumentHeader onSearch={handleSearch} />
-
-        {/* Document List */}
-        {isInitialLoad ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-gray-600">Loading documents...</p>
-          </div>
-        ) : (
-          <div className={`flex-1 overflow-hidden transition-opacity duration-150 ${isNavigating ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
-            <DocumentListSection
-              folders={folders}
-              documents={documents}
-              breadcrumb={breadcrumb}
-              onFolderClick={handleFolderClick}
-              onDocumentClick={handleDocumentClick}
-              onBreadcrumbClick={handleBreadcrumbClick}
-              onCreateFolder={handleCreateFolder}
-              onCreateDocument={handleCreateDocument}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+    </AppShell>
   );
 }

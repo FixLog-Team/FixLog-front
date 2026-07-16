@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
-import { fetchRootFolders } from '@/domains/folders/api/folders.api';
-import type { FolderItem, DocumentItem } from '@/domains/folders/types/folder';
+import { foldersApi } from '@/domains/folders/api/folders.api';
+import type { FolderItem } from '@/domains/folders/types/folder';
+import type { DocumentDto } from '@/domains/documents/types/document';
 
-export function useRootFolders(workspaceId: string, enabled: boolean) {
+/** 루트 폴더/문서 조회(사이드바 최상위). */
+export function useRootFolders(enabled: boolean) {
   const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [documents, setDocuments] = useState<DocumentDto[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     if (enabled && !isLoaded) {
-      fetchRootFolders(workspaceId)
+      foldersApi
+        .getRootContents()
         .then((result) => {
           setFolders(result.folders);
           setDocuments(result.documents);
@@ -19,7 +22,7 @@ export function useRootFolders(workspaceId: string, enabled: boolean) {
           console.error('Failed to load root folders:', error);
         });
     }
-  }, [enabled, isLoaded, workspaceId]);
+  }, [enabled, isLoaded]);
 
   return { folders, documents, isLoaded };
 }

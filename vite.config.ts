@@ -15,11 +15,13 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/api': {
+        // 서버 context-path(/fixlog)를 그대로 백엔드로 프록시한다(rewrite 없음).
+        // 프론트 라우트(/documents, /login 등)와 겹치지 않으므로 안전하며,
+        // XHR 은 same-origin(localhost:5173)으로 나가 CORS 가 발생하지 않는다.
+        '/fixlog': {
           target: env.VITE_BACKEND_URL || 'https://fixlog.art',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, '/fixlog'),
         },
       },
     },

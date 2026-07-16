@@ -1,46 +1,150 @@
-import { useState } from 'react';
-import { Search, User } from 'lucide-react';
+import { Fragment } from 'react';
+import {
+  ChevronRight,
+  FolderPlus,
+  FilePlus,
+  Star,
+  Share2,
+  Sparkles,
+  MoreHorizontal,
+  Check,
+} from 'lucide-react';
+import { Button } from '@/shared/ui/button';
+import { cn } from '@/shared/lib/utils/index';
 
-interface DocumentHeaderProps {
-  onSearch?: (query: string) => void;
+export interface Crumb {
+  label: string;
+  /** 지정 시 클릭 가능한 경로 항목으로 렌더된다(폴더 네비게이션). */
+  onClick?: () => void;
 }
 
-export function DocumentHeader({ onSearch }: DocumentHeaderProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+interface DocumentHeaderProps {
+  mode?: 'list' | 'detail';
+  breadcrumb?: Crumb[];
+  // list mode
+  onCreateFolder?: () => void;
+  onCreateDocument?: () => void;
+  // detail mode
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  onShare?: () => void;
+  onSave?: () => void;
+  isSaving?: boolean;
+  isSaved?: boolean;
+  onSummarize?: () => void;
+  onMore?: () => void;
+}
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    onSearch?.(value);
-  };
+export function DocumentHeader({
+  mode = 'list',
+  breadcrumb = [],
+  onCreateFolder,
+  onCreateDocument,
+  isFavorite = false,
+  onToggleFavorite,
+  onShare,
+  onSave,
+  isSaving = false,
+  isSaved = false,
+  onSummarize,
+  onMore,
+}: DocumentHeaderProps) {
+  return (
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+      <Breadcrumb items={breadcrumb} />
+
+      {mode === 'list' ? (
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={onCreateFolder}>
+            <FolderPlus />
+            New Folder
+          </Button>
+          <Button size="sm" onClick={onCreateDocument}>
+            <FilePlus />
+            New Document
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Add to favorites"
+            onClick={onToggleFavorite}
+          >
+            <Star className={cn(isFavorite && 'fill-current text-primary')} />
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onShare}>
+            <Share2 />
+            Share
+          </Button>
+          {isSaved && !isSaving && (
+            <span className="flex items-center gap-1 text-sm text-primary">
+              <Check className="size-4" />
+              Saved
+            </span>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onSave}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving…' : 'Save'}
+          </Button>
+          <Button size="sm" onClick={onSummarize}>
+            <Sparkles />
+            Summarize
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="More actions"
+            onClick={onMore}
+          >
+            <MoreHorizontal />
+          </Button>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function Breadcrumb({ items }: { items: Crumb[] }) {
+  if (items.length === 0) return <span />;
 
   return (
-    <header className="sticky top-0 z-10 bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between px-6 py-3">
-        {/* Left: Search */}
-        <div className="flex-1 max-w-2xl">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={20}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder="Search by meaning, not keywords..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-            />
-          </div>
-        </div>
-
-        {/* Right: User Avatar */}
-        <div className="flex items-center gap-3 ml-6">
-          <button className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium hover:opacity-90 transition-opacity">
-            <User size={20} />
-          </button>
-        </div>
-      </div>
-    </header>
+    <nav className="flex min-w-0 items-center gap-1.5 text-sm">
+      {items.map((item, index) => {
+        const isLast = index === items.length - 1;
+        return (
+          <Fragment key={`${item.label}-${index}`}>
+            {index > 0 && (
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            )}
+            {item.onClick && !isLast ? (
+              <button
+                type="button"
+                onClick={item.onClick}
+                className="truncate text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.label}
+              </button>
+            ) : (
+              <span
+                className={cn(
+                  'truncate',
+                  isLast
+                    ? 'font-semibold text-foreground'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {item.label}
+              </span>
+            )}
+          </Fragment>
+        );
+      })}
+    </nav>
   );
 }

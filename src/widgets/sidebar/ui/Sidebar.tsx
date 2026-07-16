@@ -1,239 +1,135 @@
-import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
-  ChevronRight,
-  ChevronDown,
+  Home,
+  Sparkles,
   Folder,
-  FolderOpen,
-  FileText,
+  // Clock, // TODO: Recent 재활성화 시 복구
+  // Star,  // TODO: Favorites 재활성화 시 복구
+  Settings,
+  Hash,
   Plus,
+  ChevronsUpDown,
 } from 'lucide-react';
-import type { FolderItem, DocumentItem, FolderPathItem } from '@/domains/folders';
-import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
-import { useFolderChildren } from '@/domains/folders/hooks/use-folder-children';
+import { ROUTES } from '@/shared/constants/routes';
 import { LAYOUT } from '@/shared/constants/layout';
+import { cn } from '@/shared/lib/utils/index';
+import { Avatar } from '@/shared/ui/avatar';
+import {
+  CURRENT_USER,
+  CURRENT_WORKSPACE,
+} from '@/domains/user/lib/mock-data/current-user';
+import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
 
-interface SidebarProps {
-  currentFolderId?: string | null;
-  selectedDocumentId?: string | null;
-  workspaceId: string;
-  onFolderClick?: (folder: FolderItem, path: FolderPathItem[]) => void;
-  onDocumentClick?: (document: DocumentItem) => void;
-  onCreateDocument?: () => void;
+interface NavItem {
+  label: string;
+  to: string;
+  icon: typeof Home;
 }
 
-export function Sidebar({
-  currentFolderId,
-  selectedDocumentId,
-  workspaceId,
-  onFolderClick,
-  onDocumentClick,
-  onCreateDocument,
-}: SidebarProps) {
-  const [isMyDocumentsExpanded, setIsMyDocumentsExpanded] = useState(true);
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Home', to: ROUTES.WORKSPACE, icon: Home },
+  { label: 'AI Search', to: ROUTES.SEARCH, icon: Sparkles },
+  { label: 'Documents', to: ROUTES.DOCUMENTS, icon: Folder },
+  // TODO: Recent/Favorites 기능 연동 전까지 임시 비활성화
+  // { label: 'Recent', to: `${ROUTES.DOCUMENTS}?view=recent`, icon: Clock },
+  // { label: 'Favorites', to: `${ROUTES.DOCUMENTS}?view=favorites`, icon: Star },
+  { label: 'Settings', to: ROUTES.SETTINGS, icon: Settings },
+];
 
-  const { folders: rootFolders, documents: rootDocuments, isLoaded } =
-    useRootFolders(workspaceId, isMyDocumentsExpanded);
+export function Sidebar() {
+  // Hooks
+  const location = useLocation();
+  const { folders } = useRootFolders(true);
 
-  return (
-    <aside style={{ width: LAYOUT.SIDEBAR_WIDTH }} className="h-screen bg-white border-r border-gray-200 flex flex-col">
-      {/* Logo */}
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900">FixLog</h1>
-      </div>
-
-      {/* Create Document Button */}
-      <div className="px-4 pb-4">
-        <button
-          onClick={onCreateDocument}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-        >
-          <Plus size={20} />
-          <span>Create Document</span>
-        </button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2">
-        <div className="mb-4">
-          <button
-            onClick={() => setIsMyDocumentsExpanded(!isMyDocumentsExpanded)}
-            className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded-md transition-colors text-sm font-medium text-gray-700"
-          >
-            {isMyDocumentsExpanded ? (
-              <ChevronDown size={16} />
-            ) : (
-              <ChevronRight size={16} />
-            )}
-            <span>My Documents</span>
-          </button>
-
-          {isMyDocumentsExpanded && isLoaded && (
-            <div className="ml-4 mt-1 space-y-0.5">
-              {rootFolders.map((folder) => (
-                <SidebarFolderItem
-                  key={folder.folderId}
-                  folder={folder}
-                  parentPath={[]}
-                  workspaceId={workspaceId}
-                  currentFolderId={currentFolderId}
-                  selectedDocumentId={selectedDocumentId}
-                  onFolderClick={onFolderClick}
-                  onDocumentClick={onDocumentClick}
-                />
-              ))}
-              {rootDocuments.map((doc) => (
-                <SidebarDocumentItem
-                  key={doc.documentId}
-                  document={doc}
-                  isSelected={doc.documentId === selectedDocumentId}
-                  onClick={() => onDocumentClick?.(doc)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </nav>
-    </aside>
-  );
-}
-
-interface SidebarFolderItemProps {
-  folder: FolderItem;
-  parentPath: FolderPathItem[];
-  workspaceId: string;
-  currentFolderId?: string | null;
-  selectedDocumentId?: string | null;
-  onFolderClick?: (folder: FolderItem, path: FolderPathItem[]) => void;
-  onDocumentClick?: (document: DocumentItem) => void;
-}
-
-function SidebarFolderItem({
-  folder,
-  parentPath,
-  workspaceId,
-  currentFolderId,
-  selectedDocumentId,
-  onFolderClick,
-  onDocumentClick,
-}: SidebarFolderItemProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const { childFolders, childDocuments, isLoaded, loadChildren } =
-    useFolderChildren(folder.folderId, workspaceId);
-
-  const isCurrentFolder = folder.folderId === currentFolderId;
-
-  useEffect(() => {
-    if (isCurrentFolder && !isExpanded) {
-      setIsExpanded(true);
-    }
-  }, [isCurrentFolder]);
-
-  const handleChevronClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const nextExpanded = !isExpanded;
-    setIsExpanded(nextExpanded);
-
-    if (nextExpanded) {
-      await loadChildren();
-    }
+  // Functions
+  const isActive = (to: string) => {
+    const [path] = to.split('?');
+    return location.pathname === path;
   };
 
-  const currentPath: FolderPathItem[] = [
-    ...parentPath,
-    { folderId: folder.folderId, folderName: folder.folderName },
-  ];
-
-  const handleNameClick = async () => {
-    if (!isExpanded) {
-      setIsExpanded(true);
-      await loadChildren();
-    }
-    onFolderClick?.(folder, currentPath);
-  };
-
-  const className = isCurrentFolder
-    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-    : 'text-gray-700 hover:bg-gray-100';
-
+  // Render
   return (
-    <div>
-      <div
-        className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-sm ${className}`}
-      >
-        {/* Chevron: 펼침/접힘만 */}
-        <button
-          onClick={handleChevronClick}
-          className="flex-shrink-0 hover:text-gray-900"
-        >
-          {isExpanded ? (
-            <ChevronDown size={14} />
-          ) : (
-            <ChevronRight size={14} />
-          )}
-        </button>
-
-        {/* 폴더명: 펼침 + 메인 영역 이동 */}
-        <button
-          onClick={handleNameClick}
-          className="flex items-center gap-1.5 min-w-0 flex-1"
-        >
-          {isExpanded ? (
-            <FolderOpen size={16} className="flex-shrink-0 text-gray-500" />
-          ) : (
-            <Folder size={16} className="flex-shrink-0 text-gray-500" />
-          )}
-          <span className="truncate">{folder.folderName}</span>
-        </button>
-      </div>
-
-      {isExpanded && isLoaded && (
-        <div className="ml-4 mt-0.5 space-y-0.5">
-          {childFolders.map((child) => (
-            <SidebarFolderItem
-              key={child.folderId}
-              folder={child}
-              parentPath={currentPath}
-              workspaceId={workspaceId}
-              currentFolderId={currentFolderId}
-              selectedDocumentId={selectedDocumentId}
-              onFolderClick={onFolderClick}
-              onDocumentClick={onDocumentClick}
-            />
-          ))}
-          {childDocuments.map((doc) => (
-            <SidebarDocumentItem
-              key={doc.documentId}
-              document={doc}
-              isSelected={doc.documentId === selectedDocumentId}
-              onClick={() => onDocumentClick?.(doc)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface SidebarDocumentItemProps {
-  document: DocumentItem;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function SidebarDocumentItem({ document, isSelected, onClick }: SidebarDocumentItemProps) {
-  const className = isSelected
-    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-    : 'text-gray-700 hover:bg-gray-100';
-
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-sm ${className}`}
+    <aside
+      style={{ width: LAYOUT.SIDEBAR_WIDTH }}
+      className="flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
     >
-      <div className="w-[14px]" />
-      <FileText size={16} className="flex-shrink-0 text-gray-500" />
-      <span className="truncate">{document.title}</span>
-    </button>
+      {/* Workspace switcher (서버에 workspace 개념 없음 → 표시용) */}
+      <button className="flex items-center gap-2.5 px-4 py-4 text-left transition-colors hover:bg-muted">
+        <Avatar
+          name={CURRENT_WORKSPACE.name}
+          size="md"
+          className="rounded-lg bg-primary"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">
+            {CURRENT_WORKSPACE.name}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {CURRENT_WORKSPACE.company}
+          </span>
+        </span>
+        <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {/* Nav */}
+      <nav className="flex flex-col gap-0.5 px-2 pb-2">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.label}
+            to={item.to}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+              isActive(item.to)
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-foreground hover:bg-muted'
+            )}
+          >
+            <item.icon className="size-[18px] shrink-0" />
+            <span>{item.label}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {/* Folders */}
+      <div className="flex min-h-0 flex-1 flex-col px-2">
+        <div className="flex items-center justify-between px-2.5 pb-1 pt-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Folders
+          </span>
+          <Link
+            to={ROUTES.DOCUMENTS}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Manage folders"
+          >
+            <Plus className="size-4" />
+          </Link>
+        </div>
+        <div className="flex flex-col gap-0.5 overflow-y-auto">
+          {folders.map((folder) => (
+            <Link
+              key={folder.folderId}
+              to={ROUTES.DOCUMENTS}
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted"
+            >
+              <Hash className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{folder.folderName}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* User profile (서버 /users/me 미연동 → 표시용) */}
+      <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
+        <Avatar name={CURRENT_USER.name} size="md" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground">
+            {CURRENT_USER.name}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {CURRENT_USER.email}
+          </span>
+        </span>
+      </div>
+    </aside>
   );
 }
