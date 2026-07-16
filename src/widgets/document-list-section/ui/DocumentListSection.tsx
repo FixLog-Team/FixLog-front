@@ -9,32 +9,42 @@ import {
 } from 'lucide-react';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
-import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { ROUTES } from '@/shared/constants/routes';
-import type { DemoFolder } from '@/domains/folders/lib/mock-data/folders';
-import {
-  type DemoDocument,
-  STATUS_LABEL,
-} from '@/domains/documents/lib/mock-data/demo-documents';
+import type { FolderItem } from '@/domains/folders';
+import type { DocumentDto } from '@/domains/documents';
 
 interface DocumentListSectionProps {
-  folders: DemoFolder[];
-  documents: DemoDocument[];
-  onFolderClick?: (folder: DemoFolder) => void;
-  onDocumentClick?: (document: DemoDocument) => void;
+  folders: FolderItem[];
+  documents: DocumentDto[];
+  isLoading?: boolean;
+  onFolderClick?: (folder: FolderItem) => void;
+  onDocumentClick?: (document: DocumentDto) => void;
 }
 
-// Name | Type | Owner | Last updated | Status
-const GRID =
-  'grid grid-cols-[minmax(0,1fr)_120px_180px_150px_120px] items-center';
+// Name | Type | Owner | Last updated
+const GRID = 'grid grid-cols-[minmax(0,1fr)_120px_180px_150px] items-center';
+
+function formatUpdated(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 
 export function DocumentListSection({
   folders,
   documents,
+  isLoading = false,
   onFolderClick,
   onDocumentClick,
 }: DocumentListSectionProps) {
+  const isEmpty = folders.length === 0 && documents.length === 0;
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
       {/* Search + filters */}
@@ -77,66 +87,74 @@ export function DocumentListSection({
           <span>Name</span>
           <span>Type</span>
           <span>Owner</span>
-          <span>Last updated</span>
-          <span className="text-right">Status</span>
+          <span className="text-right">Last updated</span>
         </div>
 
-        {folders.map((folder) => (
-          <button
-            key={folder.id}
-            type="button"
-            onClick={() => onFolderClick?.(folder)}
-            className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <Folder className="size-[18px] shrink-0 text-primary" />
-              <span className="truncate font-medium text-foreground">
-                {folder.name}
-              </span>
-            </span>
-            <span className="text-muted-foreground">Folder</span>
-            <span className="text-muted-foreground">—</span>
-            <span className="text-muted-foreground">{folder.updatedLabel}</span>
-            <span className="text-right text-muted-foreground">
-              {folder.itemCount} items
-            </span>
-          </button>
-        ))}
+        {isLoading ? (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+            Loading…
+          </p>
+        ) : isEmpty ? (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+            폴더가 비었습니다.
+          </p>
+        ) : (
+          <>
+            {folders.map((folder) => (
+              <button
+                key={folder.folderId}
+                type="button"
+                onClick={() => onFolderClick?.(folder)}
+                className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <Folder className="size-[18px] shrink-0 text-primary" />
+                  <span className="truncate font-medium text-foreground">
+                    {folder.folderName}
+                  </span>
+                </span>
+                <span className="text-muted-foreground">Folder</span>
+                <OwnerCell name={folder.updateUser ?? folder.createUser} />
+                <span className="text-right text-muted-foreground">
+                  {formatUpdated(folder.updateTime)}
+                </span>
+              </button>
+            ))}
 
-        {documents.map((doc) => (
-          <button
-            key={doc.id}
-            type="button"
-            onClick={() => onDocumentClick?.(doc)}
-            className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <FileText className="size-[18px] shrink-0 text-muted-foreground" />
-              <span className="min-w-0">
-                <span className="block truncate font-medium text-foreground">
-                  {doc.title}
+            {documents.map((doc) => (
+              <button
+                key={doc.documentId}
+                type="button"
+                onClick={() => onDocumentClick?.(doc)}
+                className={`${GRID} w-full border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <FileText className="size-[18px] shrink-0 text-muted-foreground" />
+                  <span className="truncate font-medium text-foreground">
+                    {doc.title}
+                  </span>
                 </span>
-                <span className="mt-1 flex flex-wrap gap-1">
-                  {doc.tags.map((tag) => (
-                    <Badge key={tag} variant="tag">
-                      {tag}
-                    </Badge>
-                  ))}
+                <span className="text-muted-foreground">Document</span>
+                <OwnerCell name={doc.updateUser ?? doc.createUser} />
+                <span className="text-right text-muted-foreground">
+                  {formatUpdated(doc.updateTime)}
                 </span>
-              </span>
-            </span>
-            <span className="text-muted-foreground">Document</span>
-            <span className="flex items-center gap-2 text-foreground">
-              <Avatar name={doc.owner} size="sm" />
-              <span className="truncate">{doc.owner}</span>
-            </span>
-            <span className="text-muted-foreground">{doc.updatedLabel}</span>
-            <span className="flex justify-end">
-              <Badge variant={doc.status}>{STATUS_LABEL[doc.status]}</Badge>
-            </span>
-          </button>
-        ))}
+              </button>
+            ))}
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+/** 소유자 셀. 이름이 있으면 아바타+이름, 없으면 '—'. */
+function OwnerCell({ name }: { name: string | null }) {
+  if (!name) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="flex items-center gap-2 text-foreground">
+      <Avatar name={name} size="sm" />
+      <span className="truncate">{name}</span>
+    </span>
   );
 }

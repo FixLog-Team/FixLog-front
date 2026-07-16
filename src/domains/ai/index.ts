@@ -1,1 +1,1 @@
-// exports will be added as domain files are implemented
+export { aiApi } from '@/domains/ai/api/ai.api';

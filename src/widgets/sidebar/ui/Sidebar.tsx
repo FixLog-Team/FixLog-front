@@ -14,8 +14,11 @@ import { ROUTES } from '@/shared/constants/routes';
 import { LAYOUT } from '@/shared/constants/layout';
 import { cn } from '@/shared/lib/utils/index';
 import { Avatar } from '@/shared/ui/avatar';
-import { CURRENT_USER, CURRENT_WORKSPACE } from '@/domains/user/lib/mock-data/current-user';
-import { DEMO_FOLDERS } from '@/domains/folders/lib/mock-data/folders';
+import {
+  CURRENT_USER,
+  CURRENT_WORKSPACE,
+} from '@/domains/user/lib/mock-data/current-user';
+import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
 
 interface NavItem {
   label: string;
@@ -35,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   // Hooks
   const location = useLocation();
+  const { folders } = useRootFolders(true);
 
   // Functions
   const isActive = (to: string) => {
@@ -48,9 +52,13 @@ export function Sidebar() {
       style={{ width: LAYOUT.SIDEBAR_WIDTH }}
       className="flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
     >
-      {/* Workspace switcher */}
+      {/* Workspace switcher (서버에 workspace 개념 없음 → 표시용) */}
       <button className="flex items-center gap-2.5 px-4 py-4 text-left transition-colors hover:bg-muted">
-        <Avatar name={CURRENT_WORKSPACE.name} size="md" className="rounded-lg bg-primary" />
+        <Avatar
+          name={CURRENT_WORKSPACE.name}
+          size="md"
+          className="rounded-lg bg-primary"
+        />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">
             {CURRENT_WORKSPACE.name}
@@ -87,28 +95,29 @@ export function Sidebar() {
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Folders
           </span>
-          <button
+          <Link
+            to={ROUTES.DOCUMENTS}
             className="text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="New folder"
+            aria-label="Manage folders"
           >
             <Plus className="size-4" />
-          </button>
+          </Link>
         </div>
         <div className="flex flex-col gap-0.5 overflow-y-auto">
-          {DEMO_FOLDERS.map((folder) => (
+          {folders.map((folder) => (
             <Link
-              key={folder.id}
+              key={folder.folderId}
               to={ROUTES.DOCUMENTS}
               className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted"
             >
               <Hash className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{folder.name}</span>
+              <span className="truncate">{folder.folderName}</span>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* User profile */}
+      {/* User profile (서버 /users/me 미연동 → 표시용) */}
       <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
         <Avatar name={CURRENT_USER.name} size="md" />
         <span className="min-w-0 flex-1">

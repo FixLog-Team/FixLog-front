@@ -1,41 +1,28 @@
-import { useState } from 'react';
-import {
-  Sparkles,
-  X,
-  ListChecks,
-  Link2,
-  FileText,
-  ArrowUp,
-} from 'lucide-react';
-import { cn } from '@/shared/lib/utils/index';
-
-export interface AiSummaryContent {
-  summary: string;
-  keyDecisions: string[];
-  actionItems: string[];
-  relatedDocuments: { id: string; title: string }[];
-}
+import { Sparkles, X, ArrowUp } from 'lucide-react';
 
 interface AiSummaryPanelProps {
-  content: AiSummaryContent;
-  onClose?: () => void;
+  open: boolean;
+  isLoading: boolean;
+  summary?: string;
+  isError: boolean;
+  onClose: () => void;
 }
 
-/** 문서 상세 우측 "Document AI" 패널 */
-export function AiSummaryPanel({ content, onClose }: AiSummaryPanelProps) {
-  // State
-  const [checked, setChecked] = useState<Set<number>>(new Set());
-
-  // Functions
-  const toggleItem = (index: number) => {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      next.has(index) ? next.delete(index) : next.add(index);
-      return next;
-    });
-  };
-
+/**
+ * 문서 상세 우측 "Document AI" 패널.
+ * 최신 본문 저장 → 요약 요청 동안 로딩, 완료 시 요약 텍스트, 실패 시 안내를 보여준다.
+ * (구조화 항목(key decisions 등)은 백엔드 미지원으로 요약 텍스트만 노출한다)
+ */
+export function AiSummaryPanel({
+  open,
+  isLoading,
+  summary,
+  isError,
+  onClose,
+}: AiSummaryPanelProps) {
   // Render
+  if (!open) return null;
+
   return (
     <aside className="flex h-full w-[360px] shrink-0 flex-col border-l border-border bg-card">
       {/* Header */}
@@ -53,72 +40,28 @@ export function AiSummaryPanel({ content, onClose }: AiSummaryPanelProps) {
         </button>
       </div>
 
-      {/* Sections */}
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pb-4">
-        <Section label="Summary">
-          <p className="text-sm leading-relaxed text-foreground">
-            {content.summary}
+      {/* Body */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Summary
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+            <span className="inline-block size-4 animate-spin rounded-full border-2 border-border border-t-primary" />
+            <span>Summarizing…</span>
+          </div>
+        ) : isError ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            AI 요약에 실패했습니다. 잠시 후 다시 시도해 주세요.
           </p>
-        </Section>
-
-        <Section label="Key decisions" icon={<Sparkles className="size-3.5" />}>
-          <ul className="space-y-2">
-            {content.keyDecisions.map((item, i) => (
-              <li key={i} className="flex gap-2 text-sm text-foreground">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
-                <span className="leading-relaxed">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section label="Action items" icon={<ListChecks className="size-3.5" />}>
-          <div className="space-y-2">
-            {content.actionItems.map((item, i) => (
-              <button
-                key={i}
-                onClick={() => toggleItem(i)}
-                className="flex w-full items-center gap-2.5 rounded-lg bg-muted px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent"
-              >
-                <span
-                  className={cn(
-                    'flex size-4 shrink-0 items-center justify-center rounded border',
-                    checked.has(i)
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-card'
-                  )}
-                >
-                  {checked.has(i) && <CheckMark />}
-                </span>
-                <span
-                  className={cn(
-                    'text-foreground',
-                    checked.has(i) && 'text-muted-foreground line-through'
-                  )}
-                >
-                  {item}
-                </span>
-              </button>
-            ))}
-          </div>
-        </Section>
-
-        <Section
-          label="Related documents"
-          icon={<Link2 className="size-3.5" />}
-        >
-          <div className="space-y-1">
-            {content.relatedDocuments.map((doc) => (
-              <button
-                key={doc.id}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
-              >
-                <FileText className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{doc.title}</span>
-              </button>
-            ))}
-          </div>
-        </Section>
+        ) : (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {summary && summary.trim().length > 0
+              ? summary
+              : '요약 결과가 비어 있습니다.'}
+          </p>
+        )}
       </div>
 
       {/* Ask input */}
@@ -138,39 +81,5 @@ export function AiSummaryPanel({ content, onClose }: AiSummaryPanelProps) {
         </div>
       </div>
     </aside>
-  );
-}
-
-function Section({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function CheckMark() {
-  return (
-    <svg viewBox="0 0 12 12" className="size-3" fill="none">
-      <path
-        d="M2.5 6L5 8.5L9.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

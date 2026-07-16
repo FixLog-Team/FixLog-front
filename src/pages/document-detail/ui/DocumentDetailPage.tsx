@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, Calendar } from 'lucide-react';
-import { fetchDocumentDetail } from '@/domains/documents/api/documents.api';
-import type { DocumentDetail } from '@/domains/documents/api/documents.api';
+import { documentsApi } from '@/domains/documents/api/documents.api';
+import type { DocumentDto } from '@/domains/documents/types/document';
 
 export function DocumentDetailPage() {
   // State
-  const [documentDetail, setDocumentDetail] = useState<DocumentDetail | null>(null);
+  const [document, setDocument] = useState<DocumentDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Hooks
@@ -14,8 +14,9 @@ export function DocumentDetailPage() {
   const navigate = useNavigate();
 
   // Functions
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
+  const formatDate = (iso: string | null) => {
+    if (!iso) return '-';
+    return new Date(iso).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -32,10 +33,11 @@ export function DocumentDetailPage() {
 
       try {
         setIsLoading(true);
-        const data = await fetchDocumentDetail(documentId);
-        setDocumentDetail(data);
+        const data = await documentsApi.getDocument(documentId);
+        setDocument(data);
       } catch (error) {
         console.error('Failed to load document:', error);
+        setDocument(null);
       } finally {
         setIsLoading(false);
       }
@@ -54,7 +56,7 @@ export function DocumentDetailPage() {
     );
   }
 
-  if (!documentDetail) {
+  if (!document) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
@@ -89,28 +91,28 @@ export function DocumentDetailPage() {
           </button>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            {documentDetail.title}
+            {document.title}
           </h1>
 
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <Calendar size={16} />
-              <span>Created {formatDate(documentDetail.createdAt)}</span>
+              <span>Created {formatDate(document.createTime)}</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock size={16} />
-              <span>Modified {formatDate(documentDetail.modifiedAt)}</span>
+              <span>Modified {formatDate(document.updateTime)}</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Content */}
+      {/* Content (본문 평문 미리보기 — 서버가 blocks 에서 추출한 plainText) */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="prose prose-lg max-w-none">
             <pre className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed">
-              {documentDetail.content}
+              {document.plainText ?? '(내용 없음)'}
             </pre>
           </div>
         </div>
