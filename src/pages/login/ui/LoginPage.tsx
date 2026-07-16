@@ -8,22 +8,10 @@ import {
 } from '@/shared/ui/card';
 import { LOGIN_PAGE_TEXT } from '@/pages/login/constants';
 import { useGoogleLogin } from '@/features/auth/login/hooks/use-google-login';
-import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '@/shared/constants/routes';
 
 export function LoginPage() {
-  const navigate = useNavigate();
-
-  const { startGoogleLogin, isLoading } = useGoogleLogin({
-    onSuccess: (data) => {
-      console.log('Login success:', data);
-      navigate(ROUTES.DOCUMENTS);
-    },
-    onError: (error) => {
-      console.error('Login error:', error);
-      alert('로그인에 실패했습니다. 다시 시도해주세요.');
-    },
-  });
+  // 로그인 성공 시 서버가 /login/callback 으로 리다이렉트하므로 이 페이지의 콜백은 없다.
+  const { startGoogleLogin, isLoading } = useGoogleLogin();
 
   const handleGoogleLogin = () => {
     startGoogleLogin();

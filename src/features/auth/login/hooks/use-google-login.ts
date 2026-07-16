@@ -1,51 +1,17 @@
-import { useMutation } from '@tanstack/react-query';
 import { authApi } from '@/domains/auth/api';
-import { STORAGE_KEYS } from '@/shared/constants/storage-keys';
-import type { LoginResponse } from '@/domains/auth/types';
 
-interface UseGoogleLoginOptions {
-  onSuccess?: (data: LoginResponse) => void;
-  onError?: (error: Error) => void;
-}
-
-export function useGoogleLogin(options?: UseGoogleLoginOptions) {
+/**
+ * 구글 OAuth 로그인 시작. 백엔드 OAuth 진입 URL 로 브라우저를 이동시킨다.
+ * 이후 흐름: 구글 로그인 → 서버 콜백 → /login/callback?accessToken=...&refreshToken=...
+ * (토큰 저장은 LoginCallbackPage 에서 처리)
+ */
+export function useGoogleLogin() {
   const startGoogleLogin = () => {
-    // Spring Security OAuth2 엔드포인트로 직접 이동
-    // 302 리다이렉트를 브라우저가 자동으로 처리
-    const authUrl = authApi.getGoogleAuthUrl();
-    window.location.href = authUrl;
+    window.location.href = authApi.getGoogleAuthUrl();
   };
 
   return {
     startGoogleLogin,
     isLoading: false,
-  };
-}
-
-/**
- * Google OAuth 콜백 처리 (리다이렉트 후 돌아왔을 때)
- */
-export function useGoogleLoginCallback(options?: UseGoogleLoginOptions) {
-  const mutation = useMutation({
-    mutationFn: async (code: string) => {
-      const response = await authApi.login({ code });
-      return response;
-    },
-    onSuccess: (data) => {
-      // 토큰 저장
-      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.accessToken);
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken);
-
-      options?.onSuccess?.(data);
-    },
-    onError: (error: Error) => {
-      console.error('Google login callback failed:', error);
-      options?.onError?.(error);
-    },
-  });
-
-  return {
-    processCallback: mutation.mutate,
-    isLoading: mutation.isPending,
   };
 }
