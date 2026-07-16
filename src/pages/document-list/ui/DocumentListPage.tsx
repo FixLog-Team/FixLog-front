@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AppShell } from '@/widgets/app-shell';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
@@ -13,6 +13,7 @@ import { documentDetailPath } from '@/shared/constants/routes';
 export function DocumentListPage() {
   // Hooks
   const navigate = useNavigate();
+  const location = useLocation();
   const createDocument = useCreateDocument();
   const createFolder = useCreateFolder();
 
@@ -54,7 +55,10 @@ export function DocumentListPage() {
   };
 
   const handleDocumentClick = (document: DocumentDto) => {
-    navigate(documentDetailPath(document.documentId));
+    // 현재 폴더 경로를 함께 넘겨 에디터 breadcrumb 가 진입 경로를 유지하도록 한다.
+    navigate(documentDetailPath(document.documentId), {
+      state: { folderPath: breadcrumb },
+    });
   };
 
   const handleBreadcrumbClick = (index: number) => {
@@ -94,7 +98,18 @@ export function DocumentListPage() {
 
   // Effects
   useEffect(() => {
-    loadContents(null);
+    // 에디터 breadcrumb 등에서 넘어온 폴더 경로가 있으면 그 폴더로 복원한다.
+    const incoming = (
+      location.state as { folderPath?: FolderPathItem[] } | null
+    )?.folderPath;
+    if (incoming && incoming.length > 0) {
+      setBreadcrumb(incoming);
+      loadContents(incoming[incoming.length - 1].folderId);
+    } else {
+      setBreadcrumb([]);
+      loadContents(null);
+    }
+    // 최초 마운트 시 1회만 복원(loadContents 는 안정적).
   }, [loadContents]);
 
   // Variables (render)

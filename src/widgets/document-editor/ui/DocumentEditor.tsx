@@ -31,7 +31,7 @@ export const DocumentEditor = forwardRef<
   ]);
 
   return (
-    <div className="h-full overflow-y-auto bg-background [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12">
+    <div className="h-full overflow-y-auto bg-card [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12">
       <BlockNoteView editor={editor} theme="light" />
     </div>
   );
