@@ -3,8 +3,8 @@ import {
   Home,
   Sparkles,
   Folder,
-  Clock,
-  Star,
+  // Clock, // TODO: Recent 재활성화 시 복구
+  // Star,  // TODO: Favorites 재활성화 시 복구
   Settings,
   Hash,
   Plus,
@@ -30,8 +30,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Home', to: ROUTES.WORKSPACE, icon: Home },
   { label: 'AI Search', to: ROUTES.SEARCH, icon: Sparkles },
   { label: 'Documents', to: ROUTES.DOCUMENTS, icon: Folder },
-  { label: 'Recent', to: `${ROUTES.DOCUMENTS}?view=recent`, icon: Clock },
-  { label: 'Favorites', to: `${ROUTES.DOCUMENTS}?view=favorites`, icon: Star },
+  // TODO: Recent/Favorites 기능 연동 전까지 임시 비활성화
+  // { label: 'Recent', to: `${ROUTES.DOCUMENTS}?view=recent`, icon: Clock },
+  // { label: 'Favorites', to: `${ROUTES.DOCUMENTS}?view=favorites`, icon: Star },
   { label: 'Settings', to: ROUTES.SETTINGS, icon: Settings },
 ];
 
