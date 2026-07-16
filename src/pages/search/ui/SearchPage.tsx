@@ -2,11 +2,8 @@ import { useState } from 'react';
 import { Sparkles, ArrowUp } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
-import {
-  SearchResults,
-  type SearchResultItem,
-} from '@/widgets/search-results';
-import { DEMO_DOCUMENTS } from '@/domains/documents/lib/mock-data/demo-documents';
+import { SearchResults } from '@/widgets/search-results';
+import { useAskAi } from '@/features/ai/ask/hooks/use-ask-ai';
 
 const SUGGESTIONS = [
   'Find documents related to pagination bugs',
@@ -15,22 +12,25 @@ const SUGGESTIONS = [
   'Find payment error handling guides',
 ];
 
-const INITIAL_QUERY = 'Find documents related to payment error handling.';
-
 export function SearchPage() {
   // State
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState(INITIAL_QUERY);
-  const [results, setResults] = useState<SearchResultItem[]>(() =>
-    runSearch(INITIAL_QUERY)
-  );
+  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
+
+  // Hooks
+  const ask = useAskAi();
+
+  // Variables
+  const hasSearched = submittedQuery !== null;
+  const answer = ask.data?.answer;
+  const references = ask.data?.references ?? [];
 
   // Functions
   const submit = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || ask.isPending) return;
     setSubmittedQuery(trimmed);
-    setResults(runSearch(trimmed));
+    ask.mutate(trimmed);
     setQuery('');
   };
 
@@ -43,40 +43,91 @@ export function SearchPage() {
   return (
     <AppShell scroll={false} header={<PageHeader title="AI Search" />}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* Conversation */}
+        {/* Conversation — 검색 전에는 빈 상태 안내, 질문 전송 후 API 응답으로 채워짐 */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-6 py-8">
-            {/* User query bubble */}
-            <div className="flex justify-end">
-              <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-                {submittedQuery}
+          {!hasSearched && (
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+              <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent">
+                <Sparkles className="size-6 text-primary" />
               </span>
-            </div>
-
-            {/* AI response */}
-            <div className="mt-6 flex gap-3">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent">
-                <Sparkles className="size-4 text-primary" />
-              </span>
-              <p className="pt-1 text-sm leading-relaxed text-foreground">
-                {results.length > 0
-                  ? `I found ${results.length} relevant ${
-                      results.length === 1 ? 'document' : 'documents'
-                    } across your workspace.`
-                  : `I couldn't find a matching document. Try rephrasing your request.`}
+              <h2 className="text-lg font-semibold text-foreground">
+                무엇이든 물어보세요
+              </h2>
+              <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+                질문을 입력하면 관련된 내 문서를 찾아 근거와 함께 답해드려요.
               </p>
             </div>
+          )}
 
-            {/* Result cards */}
-            <div className="mt-4 pl-10">
-              <SearchResults items={results} />
+          {hasSearched && (
+            <div className="mx-auto max-w-3xl px-6 py-8">
+              {/* User query bubble */}
+              <div className="flex justify-end">
+                <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+                  {submittedQuery}
+                </span>
+              </div>
+
+              {/* AI response */}
+              <div className="mt-6 flex gap-3">
+                <span
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent ${
+                    ask.isPending ? 'animate-pulse' : ''
+                  }`}
+                >
+                  <Sparkles className="size-4 text-primary" />
+                </span>
+                <div className="min-w-0 flex-1 pt-1">
+                  {ask.isPending ? (
+                    <span
+                      className="flex items-center gap-1.5 pt-1.5"
+                      role="status"
+                      aria-label="답변 생성 중"
+                    >
+                      <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
+                      <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
+                      <span className="size-2 animate-bounce rounded-full bg-primary/60" />
+                    </span>
+                  ) : ask.isError ? (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
+                    </p>
+                  ) : (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                      {answer}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Reference cards */}
+              {references.length > 0 && (
+                <div className="mt-4 pl-10">
+                  <SearchResults items={references} />
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Input */}
         <div className="shrink-0 px-6 pb-6">
           <div className="mx-auto max-w-3xl">
+            {/* 질문 예시 — 입력창 위, 첫 전송 전에만 노출 */}
+            {!hasSearched && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => submit(s)}
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <form
               onSubmit={handleFormSubmit}
               className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
@@ -92,48 +143,14 @@ export function SearchPage() {
                 type="submit"
                 aria-label="Send"
                 className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
-                disabled={!query.trim()}
+                disabled={!query.trim() || ask.isPending}
               >
                 <ArrowUp className="size-4" />
               </button>
             </form>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => submit(s)}
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>
     </AppShell>
   );
-}
-
-function runSearch(query: string): SearchResultItem[] {
-  const terms = query
-    .toLowerCase()
-    .replace(/[.?!,]/g, '')
-    .split(/\s+/)
-    .filter((t) => t.length > 2);
-
-  const scored = DEMO_DOCUMENTS.map((doc) => {
-    const haystack = `${doc.title} ${doc.description} ${doc.tags.join(' ')} ${doc.folderPath}`.toLowerCase();
-    const hits = terms.filter((t) => haystack.includes(t)).length;
-    return { doc, hits };
-  })
-    .filter((x) => x.hits > 0)
-    .sort((a, b) => b.hits - a.hits)
-    .slice(0, 4);
-
-  return scored.map((x, i) => ({
-    doc: x.doc,
-    match: x.doc.matchPercent ?? Math.max(72, 92 - i * 6),
-  }));
 }
