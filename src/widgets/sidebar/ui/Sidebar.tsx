@@ -1,13 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
+// import { useNavigate } from "react-router-dom"; // TODO: 폴더 생성 버튼 재활성화 시 복구
 import {
-  Home,
+  // Home, // TODO: Home 페이지 재활성화 시 복구
   Sparkles,
   Folder,
   // Clock, // TODO: Recent 재활성화 시 복구
   // Star,  // TODO: Favorites 재활성화 시 복구
   Settings,
-  Hash,
-  Plus,
+  // Hash, // TODO: FOLDERS 영역 재활성화 시 복구
+  // Plus, // TODO: 폴더 생성 버튼 재활성화 시 복구
   // ChevronsUpDown, // TODO: Workspace switcher 재활성화 시 복구
 } from "lucide-react";
 import { ROUTES } from "@/shared/constants/routes";
@@ -15,17 +16,19 @@ import { LAYOUT } from "@/shared/constants/layout";
 import { cn } from "@/shared/lib/utils/index";
 import { Avatar } from "@/shared/ui/avatar";
 import { CURRENT_WORKSPACE } from "@/domains/user/lib/mock-data/current-user";
-import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
+// import { useRootFolders } from "@/domains/folders/hooks/use-root-folders"; // TODO: FOLDERS 영역 재활성화 시 복구
+// import { useCreateFolder } from "@/features/folders/create-folder/hooks/use-create-folder"; // TODO: 폴더 생성 버튼 재활성화 시 복구
 import { useSession } from "@/domains/auth";
 
 interface NavItem {
   label: string;
   to: string;
-  icon: typeof Home;
+  icon: typeof Sparkles;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home", to: ROUTES.WORKSPACE, icon: Home },
+  // TODO: Home 페이지 재활성화 시 복구
+  // { label: "Home", to: ROUTES.WORKSPACE, icon: Home },
   { label: "AI Search", to: ROUTES.SEARCH, icon: Sparkles },
   { label: "Documents", to: ROUTES.DOCUMENTS, icon: Folder },
   // TODO: Recent/Favorites 기능 연동 전까지 임시 비활성화
@@ -37,14 +40,31 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   // Hooks
   const location = useLocation();
-  const { folders } = useRootFolders(true);
+  // const navigate = useNavigate(); // TODO: 폴더 생성 버튼 재활성화 시 복구
+  // const { folders } = useRootFolders(true); // TODO: FOLDERS 영역 재활성화 시 복구
   const { data: session } = useSession();
+  // const createFolder = useCreateFolder(); // TODO: 폴더 생성 버튼 재활성화 시 복구
 
   // Functions
   const isActive = (to: string) => {
     const [path] = to.split("?");
     return location.pathname === path;
   };
+
+  // TODO: 폴더 생성 버튼 재활성화 시 복구
+  // const handleCreateFolder = async () => {
+  //   const folderName = window.prompt("폴더 이름을 입력하세요", "New Folder");
+  //   if (!folderName) return;
+  //   try {
+  //     await createFolder.mutateAsync({ parentId: null, folderName });
+  //     await refetchRootFolders();
+  //     if (location.pathname !== ROUTES.DOCUMENTS) {
+  //       navigate(ROUTES.DOCUMENTS);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to create folder:", error);
+  //   }
+  // };
 
   // Render
   return (
@@ -89,19 +109,20 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Folders */}
-      <div className="flex min-h-0 flex-1 flex-col px-2">
+      {/* TODO: FOLDERS 영역 재활성화 시 복구 */}
+      {/* <div className="flex min-h-0 flex-1 flex-col px-2">
         <div className="flex items-center justify-between px-2.5 pb-1 pt-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Folders
           </span>
-          <Link
-            to={ROUTES.DOCUMENTS}
+          <button
+            type="button"
+            onClick={handleCreateFolder}
             className="text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Manage folders"
+            aria-label="Create folder"
           >
             <Plus className="size-4" />
-          </Link>
+          </button>
         </div>
         <div className="flex flex-col gap-0.5 overflow-y-auto">
           {folders.map((folder) => (
@@ -115,7 +136,8 @@ export function Sidebar() {
             </Link>
           ))}
         </div>
-      </div>
+      </div> */}
+      <div className="min-h-0 flex-1" />
 
       {/* User profile */}
       <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">

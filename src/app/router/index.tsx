@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ROUTES } from '@/shared/constants/routes';
 import { RequireAuth } from '@/app/router/require-auth';
 
@@ -30,11 +30,13 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       {
+        // TODO: Home 페이지 재활성화 시 복구
+        // lazy: () =>
+        //   import('@/pages/workspace-home/ui/WorkspaceHomePage').then((m) => ({
+        //     Component: m.WorkspaceHomePage,
+        //   })),
         path: ROUTES.WORKSPACE,
-        lazy: () =>
-          import('@/pages/workspace-home/ui/WorkspaceHomePage').then((m) => ({
-            Component: m.WorkspaceHomePage,
-          })),
+        element: <Navigate to={ROUTES.DOCUMENTS} replace />,
       },
       {
         path: ROUTES.DOCUMENTS,
