@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from "react-router-dom";
 import {
   Home,
   Sparkles,
@@ -8,17 +8,15 @@ import {
   Settings,
   Hash,
   Plus,
-  ChevronsUpDown,
-} from 'lucide-react';
-import { ROUTES } from '@/shared/constants/routes';
-import { LAYOUT } from '@/shared/constants/layout';
-import { cn } from '@/shared/lib/utils/index';
-import { Avatar } from '@/shared/ui/avatar';
-import {
-  CURRENT_USER,
-  CURRENT_WORKSPACE,
-} from '@/domains/user/lib/mock-data/current-user';
-import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
+  // ChevronsUpDown, // TODO: Workspace switcher 재활성화 시 복구
+} from "lucide-react";
+import { ROUTES } from "@/shared/constants/routes";
+import { LAYOUT } from "@/shared/constants/layout";
+import { cn } from "@/shared/lib/utils/index";
+import { Avatar } from "@/shared/ui/avatar";
+import { CURRENT_WORKSPACE } from "@/domains/user/lib/mock-data/current-user";
+import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
+import { useSession } from "@/domains/auth";
 
 interface NavItem {
   label: string;
@@ -27,23 +25,24 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', to: ROUTES.WORKSPACE, icon: Home },
-  { label: 'AI Search', to: ROUTES.SEARCH, icon: Sparkles },
-  { label: 'Documents', to: ROUTES.DOCUMENTS, icon: Folder },
+  { label: "Home", to: ROUTES.WORKSPACE, icon: Home },
+  { label: "AI Search", to: ROUTES.SEARCH, icon: Sparkles },
+  { label: "Documents", to: ROUTES.DOCUMENTS, icon: Folder },
   // TODO: Recent/Favorites 기능 연동 전까지 임시 비활성화
   // { label: 'Recent', to: `${ROUTES.DOCUMENTS}?view=recent`, icon: Clock },
   // { label: 'Favorites', to: `${ROUTES.DOCUMENTS}?view=favorites`, icon: Star },
-  { label: 'Settings', to: ROUTES.SETTINGS, icon: Settings },
+  { label: "Settings", to: ROUTES.SETTINGS, icon: Settings },
 ];
 
 export function Sidebar() {
   // Hooks
   const location = useLocation();
   const { folders } = useRootFolders(true);
+  const { data: session } = useSession();
 
   // Functions
   const isActive = (to: string) => {
-    const [path] = to.split('?');
+    const [path] = to.split("?");
     return location.pathname === path;
   };
 
@@ -68,7 +67,7 @@ export function Sidebar() {
             {CURRENT_WORKSPACE.company}
           </span>
         </span>
-        <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+        {/* <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" /> */}
       </button>
 
       {/* Nav */}
@@ -78,10 +77,10 @@ export function Sidebar() {
             key={item.label}
             to={item.to}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+              "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
               isActive(item.to)
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'text-foreground hover:bg-muted'
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-foreground hover:bg-muted",
             )}
           >
             <item.icon className="size-[18px] shrink-0" />
@@ -118,15 +117,15 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* User profile (서버 /users/me 미연동 → 표시용) */}
+      {/* User profile */}
       <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
-        <Avatar name={CURRENT_USER.name} size="md" />
+        <Avatar name={session?.userName ?? ""} size="md" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-foreground">
-            {CURRENT_USER.name}
+            {session?.userName}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {CURRENT_USER.email}
+            {session?.email}
           </span>
         </span>
       </div>
