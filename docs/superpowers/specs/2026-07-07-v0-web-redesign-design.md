@@ -28,14 +28,14 @@ v0에서 완성된 FixLog 제품 디자인(Apple 디자인 시스템 기반, 미
 
 `src/app/styles/globals.css`의 `:root` 토큰을 아래 값으로 교체한다. 기존 shadcn oklch 중성 팔레트 → v0 팔레트.
 
-| 토큰 | 값 | 용도 |
-|---|---|---|
-| Background | `#F5F5F7` | 앱 배경 (soft off-white) |
-| Surface | `#FFFFFF` | 카드/패널/표면 |
-| Border | `#E4E4E7` | hairline 보더 |
-| Primary text | `#1D1D1F` | 본문/제목 |
-| Secondary text | `#6E6E73` | 보조 텍스트/캡션 |
-| Accent (FixLog blue) | `#0A6CFF` | 모든 인터랙티브 요소 |
+| 토큰                 | 값        | 용도                     |
+| -------------------- | --------- | ------------------------ |
+| Background           | `#F5F5F7` | 앱 배경 (soft off-white) |
+| Surface              | `#FFFFFF` | 카드/패널/표면           |
+| Border               | `#E4E4E7` | hairline 보더            |
+| Primary text         | `#1D1D1F` | 본문/제목                |
+| Secondary text       | `#6E6E73` | 보조 텍스트/캡션         |
+| Accent (FixLog blue) | `#0A6CFF` | 모든 인터랙티브 요소     |
 
 - 상태 배지: Published(green), In review(amber), Draft(gray), match%(blue dot).
 - shadcn 토큰 매핑: `--background`, `--foreground`, `--card`, `--border`, `--primary`(= accent blue), `--muted-foreground`(= secondary) 등을 위 값으로 재정의한다. Tailwind v4 `@theme inline` 매핑은 유지.
@@ -56,16 +56,16 @@ v0에서 완성된 FixLog 제품 디자인(Apple 디자인 시스템 기반, 미
 
 `src/shared/constants/routes.ts` 및 `src/app/router/index.tsx` 갱신.
 
-| 경로 | 페이지 | 상태 | 셸 |
-|---|---|---|---|
-| `/` | Landing (마케팅) | **신규** | 없음(자체 마케팅 네비) |
-| `/login`, `/login/callback` | 로그인 | 기존 유지(기능) | 없음 |
-| `/workspace` | Home 대시보드 | **신규** | AppShell |
-| `/documents` | 문서 목록(테이블) | 리디자인 | AppShell |
-| `/documents/:documentId` | 문서 상세/에디터 | 리디자인(헤더·AI·히스토리 v0 / 본문 BlockNote 유지) | AppShell(내부) |
-| `/documents/:documentId/history` | 문서 히스토리 | 리디자인(신규 디자인) | AppShell |
-| `/search` | AI 검색(대화형) | 리디자인(현재 스텁) | AppShell |
-| `/settings` | 워크스페이스 설정 | **신규** | AppShell |
+| 경로                             | 페이지            | 상태                                                | 셸                     |
+| -------------------------------- | ----------------- | --------------------------------------------------- | ---------------------- |
+| `/`                              | Landing (마케팅)  | **신규**                                            | 없음(자체 마케팅 네비) |
+| `/login`, `/login/callback`      | 로그인            | 기존 유지(기능)                                     | 없음                   |
+| `/workspace`                     | Home 대시보드     | **신규**                                            | AppShell               |
+| `/documents`                     | 문서 목록(테이블) | 리디자인                                            | AppShell               |
+| `/documents/:documentId`         | 문서 상세/에디터  | 리디자인(헤더·AI·히스토리 v0 / 본문 BlockNote 유지) | AppShell(내부)         |
+| `/documents/:documentId/history` | 문서 히스토리     | 리디자인(신규 디자인)                               | AppShell               |
+| `/search`                        | AI 검색(대화형)   | 리디자인(현재 스텁)                                 | AppShell               |
+| `/settings`                      | 워크스페이스 설정 | **신규**                                            | AppShell               |
 
 - **라우팅 변경 핵심**: 현재 `/`(HOME)는 DocumentListPage를 렌더 → 앞으로 `/`는 **랜딩**, 문서 목록은 `/documents`로 이동. 앱 진입 후 홈은 `/workspace`.
 - v0의 `/editor`는 우리 앱에서 `/documents/:documentId`로 대응(파라미터 유지).
@@ -111,23 +111,27 @@ v0에서 완성된 FixLog 제품 디자인(Apple 디자인 시스템 기반, 미
 ## 6. 페이지별 설계
 
 ### 6.1 Landing `/` (신규)
+
 - 마케팅 네비: FixLog 로고 · Product / How it works / Security / Design system · Sign in / Try FixLog(blue).
-- Hero: 배지("On-premise AI document workspace") + 대형 헤드라인 "Find and understand your company documents faster." + 서브카피 + CTA(Try FixLog / View Demo) + 하단 제품 프리뷰 목업.
+- Hero: 배지("Off-premises AI Document Platform") + 대형 헤드라인 "Find and understand your company documents faster." + 서브카피 + CTA(Try FixLog / View Demo) + 하단 제품 프리뷰 목업.
 - 이후 섹션(features 등)은 v0 랜딩을 따라 구성.
 
 ### 6.2 Home 대시보드 `/workspace` (신규)
+
 - 상단 헤더: "Home" + New Document.
 - 중앙: 인사말("Good afternoon, {name}") + "What are you looking for?" + 대형 AI 검색 입력 + 추천 칩.
 - 빠른 액션 3개: New Document / New Folder / Import Documents.
 - 하단: Recent documents + Pinned(고정) 2열.
 
 ### 6.3 문서 목록 `/documents` (리디자인)
+
 - AppShell 내부. 헤더(브레드크럼 + New Folder/New Document).
 - 검색바 + "Not sure where a document lives? Use AI Search" 힌트 배너.
 - 테이블: 폴더 행(폴더 아이콘 + 이름 + items 수) / 문서 행(문서 아이콘 + 제목 + 태그 + Type + Owner 아바타 + Last updated + Status 배지).
 - 기존 folders 데이터 훅/mock 재사용.
 
 ### 6.4 문서 상세/에디터 `/documents/:documentId` (리디자인 + 본문 유지)
+
 - 상단 v0 헤더: 브레드크럼 + 별 + Share + **Summarize** + More.
 - 본문 영역 상단: 제목 + 메타(작성자 아바타/이름 · Updated 날짜 · 폴더 경로 · Status 배지) — v0 스타일.
 - **문서 작성 영역**: 현재 `widgets/document-editor`의 **BlockNote 유지**(교체 금지). 메타 아래에 BlockNote 본문 배치.
@@ -135,15 +139,18 @@ v0에서 완성된 FixLog 제품 디자인(Apple 디자인 시스템 기반, 미
 - 레이아웃: 좌(본문 max-width 중앙 정렬) / 우(AI 패널 고정폭). 패널 닫으면 본문 전체폭.
 
 ### 6.5 문서 히스토리 `/documents/:documentId/history` (리디자인)
+
 - v0 디자인 언어(카드 + hairline)로 버전 목록 구성. 각 항목: 버전 시각/작성자/요약 + **롤백** 버튼.
 - (히스토리는 v0 배포에 전용 화면이 없어 v0 토큰/컴포넌트로 신규 디자인. 비교 UI는 MVP 제외.)
 
 ### 6.6 AI 검색 `/search` (리디자인)
+
 - 대화형: 사용자 쿼리 버블(blue) + AI 응답 텍스트 + 결과 카드 목록(제목/폴더경로/설명/태그/match%/작성자·날짜/Open document).
 - 하단 고정 입력: "Ask FixLog to find a document…" + 추천 칩.
 - 기존 `searchDocuments` mock 재사용해 결과 채움.
 
 ### 6.7 설정 `/settings` (신규)
+
 - 워크스페이스 설정 카드: Workspace profile(이름/회사/배포유형/리전/환경 배지) + Infrastructure(DB/Storage/URL/Backup 상태 리스트, Active 배지).
 
 ---

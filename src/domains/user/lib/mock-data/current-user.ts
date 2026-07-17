@@ -14,14 +14,14 @@ export interface UserProfile {
 }
 
 export const CURRENT_WORKSPACE: WorkspaceProfile = {
-  name: 'Acme Workspace',
-  company: 'Acme Logistics, Inc.',
-  deploymentType: 'Dedicated on-premise environment',
-  region: 'US East (Virginia)',
-  environment: 'Production',
+  name: "FixLog Document",
+  company: "FixLog Team.",
+  deploymentType: "Dedicated Off-premises environment",
+  region: "US East (Virginia)",
+  environment: "Production",
 };
 
 export const CURRENT_USER: UserProfile = {
-  name: 'Maria Chen',
-  email: 'maria@acme.co',
+  name: "Maria Chen",
+  email: "maria@acme.co",
 };
