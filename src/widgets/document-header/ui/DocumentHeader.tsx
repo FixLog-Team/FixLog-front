@@ -6,7 +6,7 @@ import {
   Star,
   Share2,
   Sparkles,
-  MoreHorizontal,
+  Trash2,
   Check,
 } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -32,7 +32,7 @@ interface DocumentHeaderProps {
   isSaving?: boolean;
   isSaved?: boolean;
   onSummarize?: () => void;
-  onMore?: () => void;
+  onDelete?: () => void;
 }
 
 export function DocumentHeader({
@@ -47,7 +47,7 @@ export function DocumentHeader({
   isSaving = false,
   isSaved = false,
   onSummarize,
-  onMore,
+  onDelete,
 }: DocumentHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
@@ -99,10 +99,11 @@ export function DocumentHeader({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="More actions"
-            onClick={onMore}
+            aria-label="Delete document"
+            className="hover:text-destructive"
+            onClick={onDelete}
           >
-            <MoreHorizontal />
+            <Trash2 />
           </Button>
         </div>
       )}

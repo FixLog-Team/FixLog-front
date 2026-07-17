@@ -139,6 +139,7 @@ export function DocumentListPage() {
         isLoading={isLoading}
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}
+        onChanged={() => loadContents(currentFolderId)}
       />
     </AppShell>
   );
