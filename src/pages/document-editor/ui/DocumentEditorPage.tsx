@@ -9,10 +9,21 @@ import {
 } from "@/widgets/document-editor";
 import { AiSummaryPanel } from "@/widgets/ai-summary-panel";
 import { Avatar } from "@/shared/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/shared/ui/alert-dialog";
 import { useDocument } from "@/domains/documents";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
+import { useDeleteDocument } from "@/features/documents/delete-document/hooks/use-delete-document";
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
 import { ROUTES } from "@/shared/constants/routes";
 
@@ -67,12 +78,14 @@ export function DocumentEditorPage() {
   const { data, isLoading, isError } = useDocument(documentId);
   const { data: folderTree } = useFolderTree();
   const save = useSaveDocument(documentId ?? "");
+  const deleteDocument = useDeleteDocument();
   const summarize = useSummarizeDocument();
 
   // State
   const [title, setTitle] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
   useEffect(() => {
@@ -144,6 +157,16 @@ export function DocumentEditorPage() {
     navigate(ROUTES.DOCUMENTS, { state: { folderPath: path } });
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteDocument.mutateAsync(documentId);
+      goToFolder(folderPath);
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      alert("삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    }
+  };
+
   const breadcrumb = [
     { label: "My Documents", onClick: () => goToFolder([]) },
     ...folderPath.map((item, index) => ({
@@ -166,6 +189,7 @@ export function DocumentEditorPage() {
           onToggleFavorite={() => setIsFavorite((v) => !v)}
           onSave={handleSave}
           onSummarize={handleSummarize}
+          onDelete={() => setIsDeleteOpen(true)}
         />
       }
     >
@@ -209,6 +233,32 @@ export function DocumentEditorPage() {
         isError={summarize.isError}
         onClose={() => setSummaryOpen(false)}
       />
+
+      {/* 삭제 확인 */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &apos;{data.title}&apos; 문서를 삭제합니다. 삭제된 문서는 복구할 수
+              없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteDocument.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
