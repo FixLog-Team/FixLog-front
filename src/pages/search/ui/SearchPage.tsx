@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Sparkles, ArrowUp } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Sparkles, ArrowUp, SquarePen } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { SearchResults } from '@/widgets/search-results';
 import { useAskAi } from '@/features/ai/ask/hooks/use-ask-ai';
+import type { AskReference } from '@/domains/ai';
 
 const SUGGESTIONS = [
   'Find documents related to pagination bugs',
@@ -12,26 +13,73 @@ const SUGGESTIONS = [
   'Find payment error handling guides',
 ];
 
+/** 화면에 표시하는 대화 한 턴. answer 가 없고 에러도 아니면 응답 대기 중. */
+interface ChatTurn {
+  id: number;
+  question: string;
+  answer?: string;
+  references: AskReference[];
+  isError?: boolean;
+}
+
 export function SearchPage() {
   // State
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  // Refs
+  const nextTurnId = useRef(0);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
 
   // Hooks
   const ask = useAskAi();
 
   // Variables
-  const hasSearched = submittedQuery !== null;
-  const answer = ask.data?.answer;
-  const references = ask.data?.references ?? [];
+  const hasSearched = turns.length > 0;
+
+  // Effects — 새 턴 추가/답변 도착 시 스크롤 하단 고정
+  useEffect(() => {
+    bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [turns]);
 
   // Functions
   const submit = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || ask.isPending) return;
-    setSubmittedQuery(trimmed);
-    ask.mutate(trimmed);
+
+    const turnId = nextTurnId.current++;
+    setTurns((prev) => [...prev, { id: turnId, question: trimmed, references: [] }]);
     setQuery('');
+
+    ask.mutate(
+      { question: trimmed, conversationId: conversationId ?? undefined },
+      {
+        onSuccess: (data) => {
+          // 서버가 발급/유지하는 대화 ID 를 보관해 다음 질문에서 문맥을 유지한다.
+          setConversationId(data.conversationId);
+          setTurns((prev) =>
+            prev.map((t) =>
+              t.id === turnId
+                ? { ...t, answer: data.answer, references: data.references }
+                : t
+            )
+          );
+        },
+        onError: () => {
+          setTurns((prev) =>
+            prev.map((t) => (t.id === turnId ? { ...t, isError: true } : t))
+          );
+        },
+      }
+    );
+  };
+
+  const startNewConversation = () => {
+    setTurns([]);
+    setConversationId(null);
+    setQuery('');
+    ask.reset();
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -41,9 +89,26 @@ export function SearchPage() {
 
   // Render
   return (
-    <AppShell scroll={false} header={<PageHeader title="AI Search" />}>
+    <AppShell
+      scroll={false}
+      header={
+        <PageHeader
+          title="AI Search"
+          action={
+            hasSearched ? (
+              <button
+                onClick={startNewConversation}
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
+              >
+                <SquarePen className="size-3.5" />새 대화
+              </button>
+            ) : undefined
+          }
+        />
+      }
+    >
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* Conversation — 검색 전에는 빈 상태 안내, 질문 전송 후 API 응답으로 채워짐 */}
+        {/* Conversation — 검색 전에는 빈 상태 안내, 질문 전송 후 턴이 누적 표시됨 */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {!hasSearched && (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
@@ -55,57 +120,66 @@ export function SearchPage() {
               </h2>
               <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
                 질문을 입력하면 관련된 내 문서를 찾아 근거와 함께 답해드려요.
+                이어서 질문하면 대화 맥락이 유지돼요.
               </p>
             </div>
           )}
 
           {hasSearched && (
             <div className="mx-auto max-w-3xl px-6 py-8">
-              {/* User query bubble */}
-              <div className="flex justify-end">
-                <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-                  {submittedQuery}
-                </span>
-              </div>
+              {turns.map((turn) => {
+                const isWaiting = turn.answer === undefined && !turn.isError;
+                return (
+                  <div key={turn.id} className="mb-8 last:mb-0">
+                    {/* User query bubble */}
+                    <div className="flex justify-end">
+                      <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+                        {turn.question}
+                      </span>
+                    </div>
 
-              {/* AI response */}
-              <div className="mt-6 flex gap-3">
-                <span
-                  className={`flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent ${
-                    ask.isPending ? 'animate-pulse' : ''
-                  }`}
-                >
-                  <Sparkles className="size-4 text-primary" />
-                </span>
-                <div className="min-w-0 flex-1 pt-1">
-                  {ask.isPending ? (
-                    <span
-                      className="flex items-center gap-1.5 pt-1.5"
-                      role="status"
-                      aria-label="답변 생성 중"
-                    >
-                      <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
-                      <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
-                      <span className="size-2 animate-bounce rounded-full bg-primary/60" />
-                    </span>
-                  ) : ask.isError ? (
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
-                    </p>
-                  ) : (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                      {answer}
-                    </p>
-                  )}
-                </div>
-              </div>
+                    {/* AI response */}
+                    <div className="mt-6 flex gap-3">
+                      <span
+                        className={`flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent ${
+                          isWaiting ? 'animate-pulse' : ''
+                        }`}
+                      >
+                        <Sparkles className="size-4 text-primary" />
+                      </span>
+                      <div className="min-w-0 flex-1 pt-1">
+                        {isWaiting ? (
+                          <span
+                            className="flex items-center gap-1.5 pt-1.5"
+                            role="status"
+                            aria-label="답변 생성 중"
+                          >
+                            <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
+                            <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
+                            <span className="size-2 animate-bounce rounded-full bg-primary/60" />
+                          </span>
+                        ) : turn.isError ? (
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
+                          </p>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                            {turn.answer}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-              {/* Reference cards */}
-              {references.length > 0 && (
-                <div className="mt-4 pl-10">
-                  <SearchResults items={references} />
-                </div>
-              )}
+                    {/* Reference cards */}
+                    {turn.references.length > 0 && (
+                      <div className="mt-4 pl-10">
+                        <SearchResults items={turn.references} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div ref={bottomAnchorRef} />
             </div>
           )}
         </div>
@@ -136,7 +210,11 @@ export function SearchPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask FixLog to find a document..."
+                placeholder={
+                  hasSearched
+                    ? 'Ask a follow-up question...'
+                    : 'Ask FixLog to find a document...'
+                }
                 className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
               <button

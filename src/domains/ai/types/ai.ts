@@ -8,6 +8,8 @@ export interface AskBody {
   question: string;
   /** 참고할 문서 개수 (1~20, 기본 5). */
   topK?: number;
+  /** 후속 질문 시 전달하는 대화 ID. 미전달 시 서버가 새 대화를 시작한다. */
+  conversationId?: string;
 }
 
 /** RAG 답변 근거 문서. POST /search 응답과 동일 구조(top-K 요약 정보). */
@@ -25,4 +27,15 @@ export interface AskReference {
 export interface AskResult {
   answer: string;
   references: AskReference[];
+  /** 서버가 발급/유지하는 대화 ID. 후속 질문에 그대로 전달하면 문맥이 유지된다. */
+  conversationId: string;
+}
+
+/** GET /ai/conversations/{conversationId}/messages 응답 항목. */
+export interface ChatMessage {
+  messageId: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  /** ISO-8601 (서버 Instant). */
+  createTime: string;
 }
