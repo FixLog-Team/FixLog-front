@@ -63,6 +63,8 @@ export interface AIMessage {
   status: AIMessageStatus;
   createTime: string;
   completeTime: string | null;
+  /** AI 답변 근거 참고 문서. 이력 조회 시에도 반환된다. */
+  references: AskReference[];
 }
 
 /** POST /api/ai/conversations/{id}/messages 응답 result. */

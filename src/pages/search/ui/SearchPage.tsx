@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowUp, SquarePen } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { SearchResults } from '@/widgets/search-results';
 import { useAiChat } from '@/features/ai/chat/hooks/use-ai-chat';
+import { ROUTES } from '@/shared/constants/routes';
 
 const SUGGESTIONS = [
   'Find documents related to pagination bugs',
@@ -17,7 +19,9 @@ export function SearchPage() {
   const [query, setQuery] = useState('');
 
   // Hooks
-  const chat = useAiChat();
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const navigate = useNavigate();
+  const chat = useAiChat(conversationId);
 
   // Refs
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -40,6 +44,7 @@ export function SearchPage() {
   const startNewChat = () => {
     chat.reset();
     setQuery('');
+    if (conversationId) navigate(ROUTES.SEARCH);
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
