@@ -1,31 +1,31 @@
-import { Database, HardDrive, Globe, ShieldCheck } from 'lucide-react';
-import { AppShell } from '@/widgets/app-shell';
-import { PageHeader } from '@/shared/ui/page-header';
-import { Card } from '@/shared/ui/card';
-import { Badge } from '@/shared/ui/badge';
-import { Avatar } from '@/shared/ui/avatar';
-import { CURRENT_WORKSPACE } from '@/domains/user/lib/mock-data/current-user';
+import { Database, HardDrive, Globe, ShieldCheck } from "lucide-react";
+import { AppShell } from "@/widgets/app-shell";
+import { PageHeader } from "@/shared/ui/page-header";
+import { Card } from "@/shared/ui/card";
+import { Badge } from "@/shared/ui/badge";
+import { Avatar } from "@/shared/ui/avatar";
+import { CURRENT_WORKSPACE } from "@/domains/user/lib/mock-data/current-user";
 
 const INFRASTRUCTURE = [
   {
     icon: Database,
-    title: 'Dedicated database',
-    description: 'PostgreSQL 16 · isolated instance',
+    title: "Dedicated database",
+    description: "PostgreSQL 16 · isolated instance",
   },
   {
     icon: HardDrive,
-    title: 'Dedicated storage',
-    description: 'Encrypted object store · 500 GB',
+    title: "Dedicated storage",
+    description: "Encrypted object store · 500 GB",
   },
   {
     icon: Globe,
-    title: 'Private deployment URL',
-    description: 'acme.fixlog.internal',
+    title: "Private deployment URL",
+    description: "acme.fixlog.internal",
   },
   {
     icon: ShieldCheck,
-    title: 'Backup status',
-    description: 'Last backup 2 hours ago',
+    title: "Backup status",
+    description: "Last backup 2 hours ago",
   },
 ];
 
@@ -68,7 +68,7 @@ export function SettingsPage() {
             Infrastructure
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            This workspace runs in its own dedicated, on-premise environment.
+            This workspace runs in its own dedicated, Off-premises environment.
           </p>
           <div className="mt-4 divide-y divide-border">
             {INFRASTRUCTURE.map((item) => (

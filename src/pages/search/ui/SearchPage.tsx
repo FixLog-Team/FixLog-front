@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Sparkles, ArrowUp } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Sparkles, ArrowUp, SquarePen } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { SearchResults } from '@/widgets/search-results';
-import { useAskAi } from '@/features/ai/ask/hooks/use-ask-ai';
+import { useAiChat } from '@/features/ai/chat/hooks/use-ai-chat';
+import { ROUTES } from '@/shared/constants/routes';
 
 const SUGGESTIONS = [
   'Find documents related to pagination bugs',
@@ -16,25 +17,34 @@ const SUGGESTIONS = [
 export function SearchPage() {
   // State
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
 
   // Hooks
-  const ask = useAskAi();
-  const [searchParams] = useSearchParams();
-  const lastAutoQuery = useRef<string | null>(null);
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const navigate = useNavigate();
+  const chat = useAiChat(conversationId);
+
+  // Refs
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
 
   // Variables
-  const hasSearched = submittedQuery !== null;
-  const answer = ask.data?.answer;
-  const references = ask.data?.references ?? [];
+  const hasStarted = chat.turns.length > 0;
+
+  // Effects — 새 턴 추가/답변 도착 시 스크롤 하단 고정
+  useEffect(() => {
+    bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chat.turns]);
 
   // Functions
   const submit = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || ask.isPending) return;
-    setSubmittedQuery(trimmed);
-    ask.mutate(trimmed);
+    if (chat.send(text)) {
+      setQuery('');
+    }
+  };
+
+  const startNewChat = () => {
+    chat.reset();
     setQuery('');
+    if (conversationId) navigate(ROUTES.SEARCH);
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -42,25 +52,30 @@ export function SearchPage() {
     submit(query);
   };
 
-  // Effects
-  // Home 등에서 ?q= 로 넘어온 검색어를 자동 실행한다.
-  // 같은 q 는 재실행하지 않아 StrictMode 이중 호출/재렌더로 인한 중복 요청을 막는다.
-  useEffect(() => {
-    const q = searchParams.get('q');
-    if (q && q !== lastAutoQuery.current) {
-      lastAutoQuery.current = q;
-      submit(q);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
   // Render
   return (
-    <AppShell scroll={false} header={<PageHeader title="AI Search" />}>
+    <AppShell
+      scroll={false}
+      header={
+        <PageHeader
+          title="AI Search"
+          action={
+            hasStarted ? (
+              <button
+                onClick={startNewChat}
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
+              >
+                <SquarePen className="size-3.5" />새 대화
+              </button>
+            ) : undefined
+          }
+        />
+      }
+    >
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* Conversation — 검색 전에는 빈 상태 안내, 질문 전송 후 API 응답으로 채워짐 */}
+        {/* Conversation — 시작 전에는 빈 상태 안내, 전송 후 턴이 누적 표시됨 */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {!hasSearched && (
+          {!hasStarted && (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
               <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent">
                 <Sparkles className="size-6 text-primary" />
@@ -70,57 +85,66 @@ export function SearchPage() {
               </h2>
               <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
                 질문을 입력하면 관련된 내 문서를 찾아 근거와 함께 답해드려요.
+                이어서 질문하면 대화 맥락이 유지돼요.
               </p>
             </div>
           )}
 
-          {hasSearched && (
+          {hasStarted && (
             <div className="mx-auto max-w-3xl px-6 py-8">
-              {/* User query bubble */}
-              <div className="flex justify-end">
-                <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-                  {submittedQuery}
-                </span>
-              </div>
+              {chat.turns.map((turn) => {
+                const isWaiting = turn.answer === undefined && !turn.isError;
+                return (
+                  <div key={turn.id} className="mb-8 last:mb-0">
+                    {/* User query bubble */}
+                    <div className="flex justify-end">
+                      <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+                        {turn.question}
+                      </span>
+                    </div>
 
-              {/* AI response */}
-              <div className="mt-6 flex gap-3">
-                <span
-                  className={`flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent ${
-                    ask.isPending ? 'animate-pulse' : ''
-                  }`}
-                >
-                  <Sparkles className="size-4 text-primary" />
-                </span>
-                <div className="min-w-0 flex-1 pt-1">
-                  {ask.isPending ? (
-                    <span
-                      className="flex items-center gap-1.5 pt-1.5"
-                      role="status"
-                      aria-label="답변 생성 중"
-                    >
-                      <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
-                      <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
-                      <span className="size-2 animate-bounce rounded-full bg-primary/60" />
-                    </span>
-                  ) : ask.isError ? (
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
-                    </p>
-                  ) : (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                      {answer}
-                    </p>
-                  )}
-                </div>
-              </div>
+                    {/* AI response */}
+                    <div className="mt-6 flex gap-3">
+                      <span
+                        className={`flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent ${
+                          isWaiting ? 'animate-pulse' : ''
+                        }`}
+                      >
+                        <Sparkles className="size-4 text-primary" />
+                      </span>
+                      <div className="min-w-0 flex-1 pt-1">
+                        {isWaiting ? (
+                          <span
+                            className="flex items-center gap-1.5 pt-1.5"
+                            role="status"
+                            aria-label="답변 생성 중"
+                          >
+                            <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
+                            <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
+                            <span className="size-2 animate-bounce rounded-full bg-primary/60" />
+                          </span>
+                        ) : turn.isError ? (
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
+                          </p>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                            {turn.answer}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-              {/* Reference cards */}
-              {references.length > 0 && (
-                <div className="mt-4 pl-10">
-                  <SearchResults items={references} />
-                </div>
-              )}
+                    {/* Reference cards — 근거 문서가 있을 때만 표시 */}
+                    {turn.references.length > 0 && (
+                      <div className="mt-4 pl-10">
+                        <SearchResults items={turn.references} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div ref={bottomAnchorRef} />
             </div>
           )}
         </div>
@@ -129,7 +153,7 @@ export function SearchPage() {
         <div className="shrink-0 px-6 pb-6">
           <div className="mx-auto max-w-3xl">
             {/* 질문 예시 — 입력창 위, 첫 전송 전에만 노출 */}
-            {!hasSearched && (
+            {!hasStarted && (
               <div className="mb-3 flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
                   <button
@@ -151,14 +175,18 @@ export function SearchPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask FixLog to find a document..."
+                placeholder={
+                  hasStarted
+                    ? 'Ask a follow-up question...'
+                    : 'Ask FixLog to find a document...'
+                }
                 className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
               <button
                 type="submit"
                 aria-label="Send"
                 className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
-                disabled={!query.trim() || ask.isPending}
+                disabled={!query.trim() || chat.isPending}
               >
                 <ArrowUp className="size-4" />
               </button>

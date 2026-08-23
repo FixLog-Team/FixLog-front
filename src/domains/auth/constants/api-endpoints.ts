@@ -16,7 +16,9 @@ export const AUTH_API_ENDPOINTS = {
 
 /**
  * 구글 OAuth 진입 URL(웹). 브라우저 top-level 이동 전용이라 프록시가 아닌 백엔드 절대 URL 이어야 한다.
- * GET /login → 302 → /oauth2/authorization/google → 구글 로그인. (FRONTEND_API_GUIDE 의 진입점과 동일)
- * 로그인 성공 시 서버가 success-redirect-url(=http://localhost:5173/login/callback?accessToken=..&refreshToken=..)로 돌려보낸다.
+ * GET /login → 302 → /oauth2/authorization/google → 구글 로그인.
+ * redirect_uri 로 현재 origin 의 /login/callback 을 전달하여
+ * 로컬/배포 환경 모두 올바른 곳으로 콜백되도록 한다.
  */
-export const GOOGLE_OAUTH_URL = `${ENV.BACKEND_URL}${CONTEXT_PATH}/login`;
+const CALLBACK_URL = encodeURIComponent(`${window.location.origin}/login/callback`);
+export const GOOGLE_OAUTH_URL = `${ENV.BACKEND_URL}${CONTEXT_PATH}/login?redirect_uri=${CALLBACK_URL}`;

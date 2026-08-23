@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from "react-router-dom";
 import {
   Home,
   Sparkles,
@@ -8,18 +8,18 @@ import {
   Settings,
   Hash,
   Plus,
-  ChevronsUpDown,
-} from 'lucide-react';
-import { ROUTES } from '@/shared/constants/routes';
-import { LAYOUT } from '@/shared/constants/layout';
-import { cn } from '@/shared/lib/utils/index';
-import { Avatar } from '@/shared/ui/avatar';
-import {
-  CURRENT_USER,
-  CURRENT_WORKSPACE,
-} from '@/domains/user/lib/mock-data/current-user';
-import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
-import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
+  MessageSquare,
+  // ChevronsUpDown, // TODO: Workspace switcher 재활성화 시 복구
+} from "lucide-react";
+import { ROUTES } from "@/shared/constants/routes";
+import { searchConversationPath } from "@/shared/constants/routes";
+import { LAYOUT } from "@/shared/constants/layout";
+import { cn } from "@/shared/lib/utils/index";
+import { Avatar } from "@/shared/ui/avatar";
+import { CURRENT_WORKSPACE } from "@/domains/user/lib/mock-data/current-user";
+import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
+import { useSession } from "@/domains/auth";
+import { useConversations } from "@/domains/ai/hooks/use-conversations";
 
 interface NavItem {
   label: string;
@@ -28,39 +28,27 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', to: ROUTES.WORKSPACE, icon: Home },
-  { label: 'AI Search', to: ROUTES.SEARCH, icon: Sparkles },
-  { label: 'Documents', to: ROUTES.DOCUMENTS, icon: Folder },
+  { label: "Home", to: ROUTES.WORKSPACE, icon: Home },
+  { label: "AI Search", to: ROUTES.SEARCH, icon: Sparkles },
+  { label: "Documents", to: ROUTES.DOCUMENTS, icon: Folder },
   // TODO: Recent/Favorites 기능 연동 전까지 임시 비활성화
   // { label: 'Recent', to: `${ROUTES.DOCUMENTS}?view=recent`, icon: Clock },
   // { label: 'Favorites', to: `${ROUTES.DOCUMENTS}?view=favorites`, icon: Star },
-  { label: 'Settings', to: ROUTES.SETTINGS, icon: Settings },
+  { label: "Settings", to: ROUTES.SETTINGS, icon: Settings },
 ];
 
 export function Sidebar() {
   // Hooks
   const location = useLocation();
-  const navigate = useNavigate();
   const { folders } = useRootFolders(true);
-  const createFolder = useCreateFolder();
+  const { data: session } = useSession();
+  const { data: conversationPage } = useConversations(5);
+  const conversations = conversationPage?.items ?? [];
 
   // Functions
   const isActive = (to: string) => {
-    const [path] = to.split('?');
+    const [path] = to.split("?");
     return location.pathname === path;
-  };
-
-  // 폴더 생성 팝업 → 생성에 성공했을 때만 Documents 로 이동하고 사이드바 목록을 갱신한다.
-  const handleCreateFolder = async () => {
-    const folderName = window.prompt('폴더 이름을 입력하세요', 'New Folder');
-    if (!folderName) return; // 취소 시 아무 것도 하지 않음(이동 X)
-    try {
-      await createFolder.mutateAsync({ parentId: null, folderName });
-      // 사이드바 목록은 useCreateFolder 의 folders.all invalidate 로 자동 갱신된다.
-      navigate(ROUTES.DOCUMENTS);
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
   };
 
   // Render
@@ -84,25 +72,47 @@ export function Sidebar() {
             {CURRENT_WORKSPACE.company}
           </span>
         </span>
-        <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+        {/* <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" /> */}
       </button>
 
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 px-2 pb-2">
         {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.label}
-            to={item.to}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
-              isActive(item.to)
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'text-foreground hover:bg-muted'
+          <div key={item.label}>
+            <Link
+              to={item.to}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                isActive(item.to)
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-foreground hover:bg-muted",
+              )}
+            >
+              <item.icon className="size-[18px] shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+
+            {/* AI Search 하위 — 최근 대화방 5개 */}
+            {item.to === ROUTES.SEARCH && conversations.length > 0 && (
+              <div className="ml-4 flex flex-col gap-0.5 border-l border-border pl-2 pt-0.5">
+                {conversations.map((conv) => (
+                  <Link
+                    key={conv.conversationId}
+                    to={searchConversationPath(conv.conversationId)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                      location.pathname === searchConversationPath(conv.conversationId)
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <MessageSquare className="size-3.5 shrink-0" />
+                    <span className="truncate">{conv.title}</span>
+                  </Link>
+                ))}
+              </div>
             )}
-          >
-            <item.icon className="size-[18px] shrink-0" />
-            <span>{item.label}</span>
-          </Link>
+          </div>
         ))}
       </nav>
 
@@ -112,25 +122,19 @@ export function Sidebar() {
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Folders
           </span>
-          <button
-            type="button"
-            onClick={handleCreateFolder}
+          <Link
+            to={ROUTES.DOCUMENTS}
             className="text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Create folder"
+            aria-label="Manage folders"
           >
             <Plus className="size-4" />
-          </button>
+          </Link>
         </div>
         <div className="flex flex-col gap-0.5 overflow-y-auto">
           {folders.map((folder) => (
             <Link
               key={folder.folderId}
               to={ROUTES.DOCUMENTS}
-              state={{
-                folderPath: [
-                  { folderId: folder.folderId, folderName: folder.folderName },
-                ],
-              }}
               className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted"
             >
               <Hash className="size-4 shrink-0 text-muted-foreground" />
@@ -140,15 +144,15 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* User profile (서버 /users/me 미연동 → 표시용) */}
+      {/* User profile */}
       <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
-        <Avatar name={CURRENT_USER.name} size="md" />
+        <Avatar name={session?.userName ?? ""} size="md" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-foreground">
-            {CURRENT_USER.name}
+            {session?.userName}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {CURRENT_USER.email}
+            {session?.email}
           </span>
         </span>
       </div>

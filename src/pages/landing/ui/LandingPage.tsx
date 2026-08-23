@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from "react-router-dom";
 import {
   Sparkles,
   ArrowRight,
@@ -6,37 +6,37 @@ import {
   FileText,
   History,
   Lock,
-} from 'lucide-react';
-import { Logo } from '@/shared/ui/logo';
-import { Button } from '@/shared/ui/button';
-import { ROUTES } from '@/shared/constants/routes';
+} from "lucide-react";
+import { Logo } from "@/shared/ui/logo";
+import { Button } from "@/shared/ui/button";
+import { ROUTES } from "@/shared/constants/routes";
 
-const NAV_LINKS = ['Product', 'How it works', 'Security'];
+const NAV_LINKS = ["Product", "How it works", "Security"];
 
 const FEATURES = [
   {
     icon: Search,
-    title: 'Semantic search',
+    title: "Semantic search",
     description:
-      'Find documents by meaning, not exact keywords. Ask in plain language and get the right answer.',
+      "Find documents by meaning, not exact keywords. Ask in plain language and get the right answer.",
   },
   {
     icon: FileText,
-    title: 'AI summaries',
+    title: "AI summaries",
     description:
-      'Turn long documents into clear summaries, key decisions, and action items in one click.',
+      "Turn long documents into clear summaries, key decisions, and action items in one click.",
   },
   {
     icon: History,
-    title: 'Version history',
+    title: "Version history",
     description:
-      'Every edit is saved. Review past versions and restore any point in a document’s history.',
+      "Every edit is saved. Review past versions and restore any point in a document’s history.",
   },
   {
     icon: Lock,
-    title: 'On-premise & private',
+    title: "Off-premises",
     description:
-      'Runs in your own dedicated environment. Your knowledge never leaves your infrastructure.',
+      "Runs in your own dedicated environment. Your data stays within your dedicated environment.",
   },
 ];
 
@@ -49,7 +49,11 @@ export function LandingPage() {
           <Logo />
           <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             {NAV_LINKS.map((link) => (
-              <a key={link} href="#" className="transition-colors hover:text-foreground">
+              <a
+                key={link}
+                href="#"
+                className="transition-colors hover:text-foreground"
+              >
                 {link}
               </a>
             ))}
@@ -69,13 +73,13 @@ export function LandingPage() {
       <section className="mx-auto max-w-3xl px-6 pb-16 pt-20 text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[13px] text-muted-foreground">
           <Sparkles className="size-3.5 text-primary" />
-          On-premise AI document workspace
+          Off-premises AI Document Platform
         </span>
         <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-[-0.022em] text-foreground sm:text-6xl">
           Find and understand your company documents faster.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          FixLog is an on-premise AI document workspace that helps teams write,
+          FixLog is an Off-premises AI Document Platform that helps teams write,
           organize, search, and summarize internal knowledge.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
@@ -85,7 +89,12 @@ export function LandingPage() {
               <ArrowRight />
             </Link>
           </Button>
-          <Button asChild variant="secondary" size="lg" className="rounded-full">
+          <Button
+            asChild
+            variant="secondary"
+            size="lg"
+            className="rounded-full"
+          >
             <Link to={ROUTES.DOCUMENTS}>View Demo</Link>
           </Button>
         </div>
@@ -111,19 +120,20 @@ export function LandingPage() {
               FixLog found 2 highly relevant documents
             </p>
             <div className="mt-3 space-y-2">
-              {['Payment Error Handling Guide', 'Production Incident Retrospective'].map(
-                (title) => (
-                  <div
-                    key={title}
-                    className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5"
-                  >
-                    <FileText className="size-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">
-                      {title}
-                    </span>
-                  </div>
-                )
-              )}
+              {[
+                "Payment Error Handling Guide",
+                "Production Incident Retrospective",
+              ].map((title) => (
+                <div
+                  key={title}
+                  className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5"
+                >
+                  <FileText className="size-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">
+                    {title}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
