@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Pencil, Copy, FolderInput, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Copy, FolderInput, Share2, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,6 +36,7 @@ import { useMoveFolder } from '@/features/folders/move-folder/hooks/use-move-fol
 import { useDeleteFolder } from '@/features/folders/delete-folder/hooks/use-delete-folder';
 import { MoveDialog } from '@/widgets/item-actions/ui/MoveDialog';
 import type { ActionTarget } from '@/widgets/item-actions/ui/types';
+import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
 
 interface ItemActionsMenuProps {
   target: ActionTarget;
@@ -115,6 +116,19 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
     }
   };
 
+  const handleShare = async () => {
+    // 서버 공유 기능이 아직 없어, 대상 링크를 클립보드에 복사하는 것으로 대신한다.
+    const path =
+      target.kind === 'document' ? documentDetailPath(target.id) : ROUTES.DOCUMENTS;
+    const url = `${window.location.origin}${path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      window.alert('공유 링크가 클립보드에 복사되었습니다.');
+    } catch {
+      window.prompt('아래 링크를 복사하세요', url);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       if (target.kind === 'folder') {
@@ -164,6 +178,10 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
           <DropdownMenuItem onSelect={() => setOpenDialog('move')}>
             <FolderInput />
             이동
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleShare}>
+            <Share2 />
+            공유하기
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => setOpenDialog('delete')}>

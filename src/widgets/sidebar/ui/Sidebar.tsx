@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
   Sparkles,
@@ -19,6 +19,7 @@ import {
   CURRENT_WORKSPACE,
 } from '@/domains/user/lib/mock-data/current-user';
 import { useRootFolders } from '@/domains/folders/hooks/use-root-folders';
+import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
 
 interface NavItem {
   label: string;
@@ -39,12 +40,27 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   // Hooks
   const location = useLocation();
+  const navigate = useNavigate();
   const { folders } = useRootFolders(true);
+  const createFolder = useCreateFolder();
 
   // Functions
   const isActive = (to: string) => {
     const [path] = to.split('?');
     return location.pathname === path;
+  };
+
+  // 폴더 생성 팝업 → 생성에 성공했을 때만 Documents 로 이동하고 사이드바 목록을 갱신한다.
+  const handleCreateFolder = async () => {
+    const folderName = window.prompt('폴더 이름을 입력하세요', 'New Folder');
+    if (!folderName) return; // 취소 시 아무 것도 하지 않음(이동 X)
+    try {
+      await createFolder.mutateAsync({ parentId: null, folderName });
+      // 사이드바 목록은 useCreateFolder 의 folders.all invalidate 로 자동 갱신된다.
+      navigate(ROUTES.DOCUMENTS);
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+    }
   };
 
   // Render
@@ -96,19 +112,25 @@ export function Sidebar() {
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Folders
           </span>
-          <Link
-            to={ROUTES.DOCUMENTS}
+          <button
+            type="button"
+            onClick={handleCreateFolder}
             className="text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Manage folders"
+            aria-label="Create folder"
           >
             <Plus className="size-4" />
-          </Link>
+          </button>
         </div>
         <div className="flex flex-col gap-0.5 overflow-y-auto">
           {folders.map((folder) => (
             <Link
               key={folder.folderId}
               to={ROUTES.DOCUMENTS}
+              state={{
+                folderPath: [
+                  { folderId: folder.folderId, folderName: folder.folderName },
+                ],
+              }}
               className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted"
             >
               <Hash className="size-4 shrink-0 text-muted-foreground" />

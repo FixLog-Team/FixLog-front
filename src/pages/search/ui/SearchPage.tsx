@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Sparkles, ArrowUp } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
@@ -19,6 +20,8 @@ export function SearchPage() {
 
   // Hooks
   const ask = useAskAi();
+  const [searchParams] = useSearchParams();
+  const lastAutoQuery = useRef<string | null>(null);
 
   // Variables
   const hasSearched = submittedQuery !== null;
@@ -38,6 +41,18 @@ export function SearchPage() {
     e.preventDefault();
     submit(query);
   };
+
+  // Effects
+  // Home 등에서 ?q= 로 넘어온 검색어를 자동 실행한다.
+  // 같은 q 는 재실행하지 않아 StrictMode 이중 호출/재렌더로 인한 중복 요청을 막는다.
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && q !== lastAutoQuery.current) {
+      lastAutoQuery.current = q;
+      submit(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Render
   return (
