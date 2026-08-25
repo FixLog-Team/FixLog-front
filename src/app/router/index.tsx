@@ -65,6 +65,13 @@ export const router = createBrowserRouter([
           })),
       },
       {
+        path: ROUTES.SEARCH_CONVERSATION,
+        lazy: () =>
+          import('@/pages/search/ui/SearchPage').then((m) => ({
+            Component: m.SearchPage,
+          })),
+      },
+      {
         path: ROUTES.SETTINGS,
         lazy: () =>
           import('@/pages/settings/ui/SettingsPage').then((m) => ({

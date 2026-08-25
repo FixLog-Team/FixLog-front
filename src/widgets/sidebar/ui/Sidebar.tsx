@@ -8,15 +8,18 @@ import {
   Settings,
   Hash,
   Plus,
+  MessageSquare,
   // ChevronsUpDown, // TODO: Workspace switcher 재활성화 시 복구
 } from "lucide-react";
 import { ROUTES } from "@/shared/constants/routes";
+import { searchConversationPath } from "@/shared/constants/routes";
 import { LAYOUT } from "@/shared/constants/layout";
 import { cn } from "@/shared/lib/utils/index";
 import { Avatar } from "@/shared/ui/avatar";
 import { CURRENT_WORKSPACE } from "@/domains/user/lib/mock-data/current-user";
 import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
 import { useSession } from "@/domains/auth";
+import { useConversations } from "@/domains/ai/hooks/use-conversations";
 
 interface NavItem {
   label: string;
@@ -39,6 +42,8 @@ export function Sidebar() {
   const location = useLocation();
   const { folders } = useRootFolders(true);
   const { data: session } = useSession();
+  const { data: conversationPage } = useConversations(5);
+  const conversations = conversationPage?.items ?? [];
 
   // Functions
   const isActive = (to: string) => {
@@ -73,19 +78,41 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 px-2 pb-2">
         {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.label}
-            to={item.to}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-              isActive(item.to)
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-foreground hover:bg-muted",
+          <div key={item.label}>
+            <Link
+              to={item.to}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                isActive(item.to)
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-foreground hover:bg-muted",
+              )}
+            >
+              <item.icon className="size-[18px] shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+
+            {/* AI Search 하위 — 최근 대화방 5개 */}
+            {item.to === ROUTES.SEARCH && conversations.length > 0 && (
+              <div className="ml-4 flex flex-col gap-0.5 border-l border-border pl-2 pt-0.5">
+                {conversations.map((conv) => (
+                  <Link
+                    key={conv.conversationId}
+                    to={searchConversationPath(conv.conversationId)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                      location.pathname === searchConversationPath(conv.conversationId)
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <MessageSquare className="size-3.5 shrink-0" />
+                    <span className="truncate">{conv.title}</span>
+                  </Link>
+                ))}
+              </div>
             )}
-          >
-            <item.icon className="size-[18px] shrink-0" />
-            <span>{item.label}</span>
-          </Link>
+          </div>
         ))}
       </nav>
 
