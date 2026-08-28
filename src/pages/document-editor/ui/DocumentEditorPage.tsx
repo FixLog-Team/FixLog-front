@@ -8,6 +8,7 @@ import {
   type DocumentEditorHandle,
 } from "@/widgets/document-editor";
 import { AiSummaryPanel } from "@/widgets/ai-summary-panel";
+import { DocumentHistorySidePanel } from "@/widgets/document-history-side-panel";
 import { Avatar } from "@/shared/ui/avatar";
 import {
   AlertDialog,
@@ -85,7 +86,10 @@ export function DocumentEditorPage() {
   const [title, setTitle] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  // 복원 시에만 편집기를 리마운트해 되돌린 본문을 반영한다(저장 때마다 리마운트되면 커서가 초기화됨).
+  const [restoreSeq, setRestoreSeq] = useState(0);
 
   // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
   useEffect(() => {
@@ -189,6 +193,8 @@ export function DocumentEditorPage() {
           onToggleFavorite={() => setIsFavorite((v) => !v)}
           onSave={handleSave}
           onSummarize={handleSummarize}
+          onHistory={() => setHistoryOpen((v) => !v)}
+          isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
         />
       }
@@ -218,12 +224,26 @@ export function DocumentEditorPage() {
         {/* Writing area — BlockNote */}
         <div className="min-h-0 flex-1">
           <DocumentEditor
-            key={documentId}
+            key={`${documentId}-${restoreSeq}`}
             ref={editorRef}
             initialBlocks={parseBlocks(data.blocks)}
           />
         </div>
       </div>
+
+      {/* 버전 기록 패널 */}
+      <DocumentHistorySidePanel
+        open={historyOpen}
+        documentId={documentId}
+        currentTitle={data.title}
+        currentUser={owner}
+        currentUpdateTime={data.updateTime}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={(restored) => {
+          setTitle(restored.title);
+          setRestoreSeq((seq) => seq + 1);
+        }}
+      />
 
       {/* AI summary panel */}
       <AiSummaryPanel
