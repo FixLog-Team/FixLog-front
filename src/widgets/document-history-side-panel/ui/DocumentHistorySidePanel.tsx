@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { History, X, RotateCcw } from 'lucide-react';
+import { History, X, RotateCcw, PenLine, RotateCw } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import {
   AlertDialog,
@@ -15,7 +15,7 @@ import { cn } from '@/shared/lib/utils/index';
 import { useDocumentHistory } from '@/features/documents/restore-document/hooks/use-document-history';
 import { useDocumentHistoryVersion } from '@/features/documents/restore-document/hooks/use-document-history-version';
 import { useRestoreDocument } from '@/features/documents/restore-document/hooks/use-restore-document';
-import type { DocumentDto } from '@/domains/documents';
+import type { DocumentDto, DocumentHistoryDto } from '@/domains/documents';
 
 /** 미리보기에 표시할 최대 줄 수. 패널이 좁아 앞부분만 보여준다. */
 const PREVIEW_MAX_LINES = 12;
@@ -113,8 +113,8 @@ export function DocumentHistorySidePanel({
               현재 버전
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatVersionTime(currentUpdateTime)}
+          <p className="mt-1 text-xs text-muted-foreground" title={formatAbsoluteTime(currentUpdateTime)}>
+            {formatRelativeTime(currentUpdateTime)}
             {currentUser ? ` · ${currentUser}` : ''}
           </p>
         </div>
@@ -136,8 +136,10 @@ export function DocumentHistorySidePanel({
             </p>
           ) : (
             <ul className="space-y-1.5">
-              {versions.map((version) => {
+              {versions.map((version, index) => {
                 const isSelected = version.historyId === selectedId;
+                const newerTitle = index === 0 ? currentTitle : versions[index - 1].title;
+                const titleChanged = version.title !== newerTitle;
                 return (
                   <li key={version.historyId}>
                     <button
@@ -151,25 +153,41 @@ export function DocumentHistorySidePanel({
                           : 'border-border hover:bg-muted'
                       )}
                     >
+                      {/* 상대 시간 + 배지 */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-foreground">
-                          {version.title || '제목 없음'}
+                        <span
+                          className="text-xs font-medium text-muted-foreground"
+                          title={formatAbsoluteTime(version.createTime)}
+                        >
+                          {formatRelativeTime(version.createTime)}
                         </span>
-                        {version.source === 'RESTORE' && (
-                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                            복원됨
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {titleChanged && (
+                            <span className="flex items-center gap-0.5 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                              <PenLine className="size-3" />
+                              제목 변경
+                            </span>
+                          )}
+                          <SourceBadge source={version.source} />
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatVersionTime(version.createTime)}
-                        {version.createUser ? ` · ${version.createUser}` : ''}
+                      {/* 제목 */}
+                      <p className="mt-1.5 truncate text-sm text-foreground">
+                        {version.title || '제목 없음'}
                       </p>
+                      {version.createUser && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {version.createUser}
+                        </p>
+                      )}
                     </button>
 
                     {/* 선택한 버전 미리보기 */}
                     {isSelected && (
                       <div className="mt-1.5 rounded-lg border border-border bg-muted/50 px-3 py-2.5">
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                          이 시점의 본문
+                        </p>
                         {selectedVersion.isLoading ? (
                           <p className="text-xs text-muted-foreground">미리보기 불러오는 중…</p>
                         ) : selectedVersion.isError ? (
@@ -271,14 +289,53 @@ function inlineText(content: unknown): string {
     .join('');
 }
 
-function formatVersionTime(iso: string | null): string {
+/** 상대 시간 표시. 최근이면 "n분 전", 오래되면 절대 시간. */
+function formatRelativeTime(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
+
+  const diff = Date.now() - date.getTime();
+  const minutes = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(diff / 86_400_000);
+
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  if (hours < 24) return `${hours}시간 전`;
+  if (days < 7) return `${days}일 전`;
+
   return date.toLocaleString('ko-KR', {
     month: 'long',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+/** 툴팁용 절대 시간. */
+function formatAbsoluteTime(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/** 히스토리 소스 배지. */
+function SourceBadge({ source }: { source: DocumentHistoryDto['source'] }) {
+  if (source === 'RESTORE') {
+    return (
+      <span className="flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+        <RotateCw className="size-3" />
+        복원 전 백업
+      </span>
+    );
+  }
+  return null;
 }

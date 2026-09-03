@@ -21,6 +21,7 @@ import {
   AlertDialogCancel,
 } from "@/shared/ui/alert-dialog";
 import { useDocument } from "@/domains/documents";
+import { useSession } from "@/domains/auth/hooks/use-session";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
@@ -63,10 +64,12 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -78,6 +81,7 @@ export function DocumentEditorPage() {
   const editorRef = useRef<DocumentEditorHandle>(null);
   const { data, isLoading, isError } = useDocument(documentId);
   const { data: folderTree } = useFolderTree();
+  const { data: session } = useSession();
   const save = useSaveDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
   const summarize = useSummarizeDocument();
@@ -146,7 +150,8 @@ export function DocumentEditorPage() {
     );
   }
 
-  const owner = data.updateUser ?? data.createUser ?? "Unknown";
+  const ownerName = data.updateUser ?? data.createUser ?? "Unknown";
+  const ownerEmail = session?.email ?? null;
 
   // 진입 경로: 목록에서 넘겨준 state 우선, 없으면(새로고침/딥링크) folderId 로 트리에서 역산
   const statePath = (location.state as { folderPath?: FolderPathItem[] } | null)
@@ -212,8 +217,10 @@ export function DocumentEditorPage() {
           />
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
-              <Avatar name={owner} size="sm" />
-              <span className="text-foreground">{owner}</span>
+              <Avatar name={ownerName} size="sm" />
+              <span className="text-foreground">
+                {ownerEmail ?? ownerName}
+              </span>
             </span>
             {data.updateTime && (
               <span>Updated {formatUpdated(data.updateTime)}</span>
@@ -236,7 +243,7 @@ export function DocumentEditorPage() {
         open={historyOpen}
         documentId={documentId}
         currentTitle={data.title}
-        currentUser={owner}
+        currentUser={ownerEmail ?? ownerName}
         currentUpdateTime={data.updateTime}
         onClose={() => setHistoryOpen(false)}
         onRestored={(restored) => {
