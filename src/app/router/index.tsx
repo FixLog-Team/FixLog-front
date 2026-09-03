@@ -58,13 +58,6 @@ export const router = createBrowserRouter([
           })),
       },
       {
-        path: ROUTES.DOCUMENT_HISTORY,
-        lazy: () =>
-          import('@/pages/document-history/ui/DocumentHistoryPage').then((m) => ({
-            Component: m.DocumentHistoryPage,
-          })),
-      },
-      {
         path: ROUTES.SEARCH,
         lazy: () =>
           import('@/pages/search/ui/SearchPage').then((m) => ({

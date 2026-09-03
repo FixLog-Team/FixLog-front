@@ -6,7 +6,6 @@ export const ROUTES = {
   DOCUMENTS: '/documents',
   TRASH: '/trash',
   DOCUMENT_EDITOR: '/documents/:documentId',
-  DOCUMENT_HISTORY: '/documents/:documentId/history',
   SEARCH: '/search',
   SEARCH_CONVERSATION: '/search/:conversationId',
   SETTINGS: '/settings',
@@ -14,9 +13,6 @@ export const ROUTES = {
 
 export const documentDetailPath = (documentId: string) =>
   `/documents/${documentId}`;
-
-export const documentHistoryPath = (documentId: string) =>
-  `/documents/${documentId}/history`;
 
 export const searchConversationPath = (conversationId: string) =>
   `/search/${conversationId}`;
