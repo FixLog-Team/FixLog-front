@@ -44,6 +44,13 @@ export const router = createBrowserRouter([
           })),
       },
       {
+        path: ROUTES.TRASH,
+        lazy: () =>
+          import('@/pages/trash/ui/TrashPage').then((m) => ({
+            Component: m.TrashPage,
+          })),
+      },
+      {
         path: ROUTES.DOCUMENT_EDITOR,
         lazy: () =>
           import('@/pages/document-editor/ui/DocumentEditorPage').then((m) => ({

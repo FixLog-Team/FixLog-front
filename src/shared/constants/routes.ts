@@ -4,6 +4,7 @@ export const ROUTES = {
   LOGIN_CALLBACK: '/login/callback',
   WORKSPACE: '/workspace',
   DOCUMENTS: '/documents',
+  TRASH: '/trash',
   DOCUMENT_EDITOR: '/documents/:documentId',
   DOCUMENT_HISTORY: '/documents/:documentId/history',
   SEARCH: '/search',

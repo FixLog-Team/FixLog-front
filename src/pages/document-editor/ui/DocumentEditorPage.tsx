@@ -8,6 +8,7 @@ import {
   type DocumentEditorHandle,
 } from "@/widgets/document-editor";
 import { AiSummaryPanel } from "@/widgets/ai-summary-panel";
+import { DocumentLabels } from "@/widgets/document-labels";
 import { Avatar } from "@/shared/ui/avatar";
 import {
   AlertDialog,
@@ -25,6 +26,9 @@ import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
 import { useDeleteDocument } from "@/features/documents/delete-document/hooks/use-delete-document";
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
+import { useSuggestTags } from "@/features/ai/suggest-tags/hooks/use-suggest-tags";
+import { TagSuggestionDialog } from "@/features/labels/add-label/ui/TagSuggestionDialog";
+import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { ROUTES } from "@/shared/constants/routes";
 
 /** 폴더 트리에서 targetId 까지의 조상 경로를 찾는다(루트→대상). 없으면 null. */
@@ -80,12 +84,14 @@ export function DocumentEditorPage() {
   const save = useSaveDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
   const summarize = useSummarizeDocument();
+  const suggestTags = useSuggestTags();
 
   // State
   const [title, setTitle] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
 
   // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
   useEffect(() => {
@@ -112,12 +118,25 @@ export function DocumentEditorPage() {
     if (!blocks || !documentId) return;
     setSummaryOpen(true);
     summarize.reset();
+    suggestTags.reset();
+    const content = blocksToPlainText(blocks);
     try {
       // 서버가 DB 원문을 요약하므로 최신 본문 저장을 먼저 수행한다.
       await save.mutateAsync({ title: title.trim() || "Untitled", blocks });
-      await summarize.mutateAsync(documentId);
+      // 요약(패널)과 태그 제안(팝업)을 독립적으로 진행 — 한쪽 실패가 다른 쪽을 막지 않는다.
+      summarize.mutateAsync(documentId).catch((error) => {
+        console.error("AI summarize failed:", error);
+      });
+      if (content) {
+        try {
+          const tags = await suggestTags.mutateAsync(content);
+          if (tags.length > 0) setTagDialogOpen(true);
+        } catch (error) {
+          console.error("AI tag suggestion failed:", error);
+        }
+      }
     } catch (error) {
-      console.error("AI summarize failed:", error);
+      console.error("Failed to save before summarize:", error);
     }
   };
 
@@ -213,6 +232,7 @@ export function DocumentEditorPage() {
               <span>Updated {formatUpdated(data.updateTime)}</span>
             )}
           </div>
+          <DocumentLabels documentId={documentId} />
         </div>
 
         {/* Writing area — BlockNote */}
@@ -232,6 +252,14 @@ export function DocumentEditorPage() {
         summary={summarize.data}
         isError={summarize.isError}
         onClose={() => setSummaryOpen(false)}
+      />
+
+      {/* AI 추천 태그 선택 → 라벨 추가 */}
+      <TagSuggestionDialog
+        open={tagDialogOpen}
+        onOpenChange={setTagDialogOpen}
+        documentId={documentId}
+        suggestions={suggestTags.data ?? []}
       />
 
       {/* 삭제 확인 */}

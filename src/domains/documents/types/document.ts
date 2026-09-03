@@ -13,8 +13,6 @@ export interface DocumentDto {
   /** 본문에서 추출한 평문(검색/미리보기용). */
   plainText: string | null;
   contentHash: string | null;
-  /** 문서 태그. 서버가 콤마 구분 문자열을 배열로 변환해 반환(없으면 빈 배열). */
-  tags: string[];
   ordinal: number | null;
   createUser: string | null;
   createTime: string | null; // ISO-8601

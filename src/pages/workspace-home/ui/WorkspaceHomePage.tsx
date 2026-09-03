@@ -26,6 +26,7 @@ import { useCreateDocument } from '@/features/documents/create-document/hooks/us
 import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
 import { useRecentFolders } from '@/domains/folders/hooks/use-recent-folders';
 import type { RecentFolder } from '@/domains/folders/hooks/use-recent-folders';
+import { useDocumentLabels } from '@/domains/labels';
 
 const SUGGESTIONS = [
   'Find documents related to pagination bugs',
@@ -313,7 +314,7 @@ function FolderCard({
   );
 }
 
-/** 최근 문서 행(실제 DocumentDto). */
+/** 최근 문서 행(실제 DocumentDto). 라벨 첫 개를 pill 로 표시. */
 function RecentDocRow({
   doc,
   onClick,
@@ -321,6 +322,8 @@ function RecentDocRow({
   doc: DocumentDto;
   onClick: () => void;
 }) {
+  const { data } = useDocumentLabels(doc.documentId);
+  const firstLabel = data?.[0];
   return (
     <button
       onClick={onClick}
@@ -332,7 +335,7 @@ function RecentDocRow({
           {doc.title}
         </span>
       </span>
-      {doc.tags?.[0] && <Badge variant="tag">{doc.tags[0]}</Badge>}
+      {firstLabel && <Badge variant="tag">{firstLabel.labelName}</Badge>}
       <span className="shrink-0 text-xs text-muted-foreground">
         {formatUpdated(doc.updateTime)}
       </span>

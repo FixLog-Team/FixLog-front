@@ -36,7 +36,7 @@ import { useMoveFolder } from '@/features/folders/move-folder/hooks/use-move-fol
 import { useDeleteFolder } from '@/features/folders/delete-folder/hooks/use-delete-folder';
 import { MoveDialog } from '@/widgets/item-actions/ui/MoveDialog';
 import type { ActionTarget } from '@/widgets/item-actions/ui/types';
-import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
+import { ShareDialog } from '@/features/sharing/share-resource/ui/ShareDialog';
 
 interface ItemActionsMenuProps {
   target: ActionTarget;
@@ -63,6 +63,7 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
   const deleteFolder = useDeleteFolder();
 
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(target.name);
 
   const close = () => setOpenDialog(null);
@@ -116,19 +117,6 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
     }
   };
 
-  const handleShare = async () => {
-    // 서버 공유 기능이 아직 없어, 대상 링크를 클립보드에 복사하는 것으로 대신한다.
-    const path =
-      target.kind === 'document' ? documentDetailPath(target.id) : ROUTES.DOCUMENTS;
-    const url = `${window.location.origin}${path}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      window.alert('공유 링크가 클립보드에 복사되었습니다.');
-    } catch {
-      window.prompt('아래 링크를 복사하세요', url);
-    }
-  };
-
   const handleDelete = async () => {
     try {
       if (target.kind === 'folder') {
@@ -179,7 +167,7 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
             <FolderInput />
             이동
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleShare}>
+          <DropdownMenuItem onSelect={() => setShareOpen(true)}>
             <Share2 />
             공유하기
           </DropdownMenuItem>
@@ -223,6 +211,15 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
         open={openDialog === 'move'}
         onOpenChange={(o) => !o && close()}
         onSelect={handleMove}
+      />
+
+      {/* 공유 */}
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        kind={target.kind}
+        id={target.id}
+        name={target.name}
       />
 
       {/* 삭제 확인 */}

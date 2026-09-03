@@ -13,6 +13,7 @@ import { Avatar } from '@/shared/ui/avatar';
 import { Badge } from '@/shared/ui/badge';
 import { ROUTES } from '@/shared/constants/routes';
 import { ItemActionsMenu } from '@/widgets/item-actions';
+import { useDocumentLabels } from '@/domains/labels';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 
@@ -160,7 +161,7 @@ export function DocumentListSection({
                 onKeyDown={rowKeyHandler(() => onDocumentClick?.(doc))}
                 className={`${GRID} w-full cursor-pointer border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
               >
-                <DocumentNameCell title={doc.title} tags={doc.tags ?? []} />
+                <DocumentNameCell title={doc.title} documentId={doc.documentId} />
                 <span className="text-muted-foreground">Document</span>
                 <OwnerCell name={doc.updateUser ?? doc.createUser} />
                 <span className="text-right text-muted-foreground">
@@ -181,19 +182,26 @@ export function DocumentListSection({
   );
 }
 
-/** 문서 이름 셀. 제목 아래에 태그 pill 을 보여준다. 태그가 없으면 태그 영역을 렌더하지 않는다. */
-function DocumentNameCell({ title, tags }: { title: string; tags: string[] }) {
-  const visibleTags = tags.filter((tag) => tag.trim().length > 0);
+/** 문서 이름 셀. 제목 아래에 라벨 pill 을 보여준다. 라벨이 없으면 라벨 영역을 렌더하지 않는다. */
+function DocumentNameCell({
+  title,
+  documentId,
+}: {
+  title: string;
+  documentId: string;
+}) {
+  const { data } = useDocumentLabels(documentId);
+  const labels = data ?? [];
   return (
     <span className="flex min-w-0 items-start gap-3">
       <FileText className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />
       <span className="flex min-w-0 flex-col gap-1">
         <span className="truncate font-medium text-foreground">{title}</span>
-        {visibleTags.length > 0 && (
+        {labels.length > 0 && (
           <span className="flex flex-wrap gap-1">
-            {visibleTags.map((tag) => (
-              <Badge key={tag} variant="tag">
-                {tag}
+            {labels.map((label) => (
+              <Badge key={label.labelId} variant="tag">
+                {label.labelName}
               </Badge>
             ))}
           </span>

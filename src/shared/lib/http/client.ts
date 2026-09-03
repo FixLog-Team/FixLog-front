@@ -6,6 +6,7 @@ import axios, {
 import { ENV } from '@/app/config/env';
 import { ROUTES } from '@/shared/constants/routes';
 import { tokenStorage } from '@/shared/lib/auth/token-storage';
+import { workspaceStorage } from '@/shared/lib/workspace/workspace-storage';
 import type { ApiResponse } from '@/shared/types';
 
 /**
@@ -27,6 +28,11 @@ http.interceptors.request.use((config) => {
   const token = tokenStorage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // 현재 워크스페이스 스코프. 없으면 헤더 생략 → 서버는 개인 워크스페이스로 처리.
+  const workspaceId = workspaceStorage.get();
+  if (workspaceId) {
+    config.headers['X-Workspace-Id'] = workspaceId;
   }
   return config;
 });
