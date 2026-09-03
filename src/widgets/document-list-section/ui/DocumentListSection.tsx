@@ -12,6 +12,7 @@ import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
 import { ROUTES } from '@/shared/constants/routes';
 import { ItemActionsMenu } from '@/widgets/item-actions';
+import { useSession } from '@/domains/auth/hooks/use-session';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 
@@ -32,10 +33,12 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
@@ -57,6 +60,8 @@ export function DocumentListSection({
   onDocumentClick,
   onChanged,
 }: DocumentListSectionProps) {
+  const { data: session } = useSession();
+  const ownerEmail = session?.email ?? null;
   const isEmpty = folders.length === 0 && documents.length === 0;
   const notifyChanged = () => onChanged?.();
 
@@ -132,7 +137,7 @@ export function DocumentListSection({
                   </span>
                 </span>
                 <span className="text-muted-foreground">Folder</span>
-                <OwnerCell name={folder.updateUser ?? folder.createUser} />
+                <OwnerCell name={folder.updateUser ?? folder.createUser} email={ownerEmail} />
                 <span className="text-right text-muted-foreground">
                   {formatUpdated(folder.updateTime)}
                 </span>
@@ -166,7 +171,7 @@ export function DocumentListSection({
                   </span>
                 </span>
                 <span className="text-muted-foreground">Document</span>
-                <OwnerCell name={doc.updateUser ?? doc.createUser} />
+                <OwnerCell name={doc.updateUser ?? doc.createUser} email={ownerEmail} />
                 <span className="text-right text-muted-foreground">
                   {formatUpdated(doc.updateTime)}
                 </span>
@@ -185,13 +190,14 @@ export function DocumentListSection({
   );
 }
 
-/** 소유자 셀. 이름이 있으면 아바타+이름, 없으면 '—'. */
-function OwnerCell({ name }: { name: string | null }) {
-  if (!name) return <span className="text-muted-foreground">—</span>;
+/** 소유자 셀. 이메일 우선, 없으면 이름, 둘 다 없으면 '—'. */
+function OwnerCell({ name, email }: { name: string | null; email: string | null }) {
+  const display = email ?? name;
+  if (!display) return <span className="text-muted-foreground">—</span>;
   return (
     <span className="flex items-center gap-2 text-foreground">
-      <Avatar name={name} size="sm" />
-      <span className="truncate">{name}</span>
+      <Avatar name={name ?? display} size="sm" />
+      <span className="truncate">{display}</span>
     </span>
   );
 }

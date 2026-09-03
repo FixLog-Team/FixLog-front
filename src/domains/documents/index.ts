@@ -2,6 +2,8 @@ export { documentsApi } from '@/domains/documents/api/documents.api';
 export type {
   DocumentDto,
   DocumentDuplicateDto,
+  DocumentHistoryDto,
+  DocumentHistoryDetailDto,
   CreateDocumentBody,
   SaveDocumentBody,
   MoveDocumentBody,

@@ -8,6 +8,7 @@ import {
   type DocumentEditorHandle,
 } from "@/widgets/document-editor";
 import { AiSummaryPanel } from "@/widgets/ai-summary-panel";
+import { DocumentHistorySidePanel } from "@/widgets/document-history-side-panel";
 import { Avatar } from "@/shared/ui/avatar";
 import {
   AlertDialog,
@@ -20,6 +21,7 @@ import {
   AlertDialogCancel,
 } from "@/shared/ui/alert-dialog";
 import { useDocument } from "@/domains/documents";
+import { useSession } from "@/domains/auth/hooks/use-session";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
@@ -62,10 +64,12 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -77,6 +81,7 @@ export function DocumentEditorPage() {
   const editorRef = useRef<DocumentEditorHandle>(null);
   const { data, isLoading, isError } = useDocument(documentId);
   const { data: folderTree } = useFolderTree();
+  const { data: session } = useSession();
   const save = useSaveDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
   const summarize = useSummarizeDocument();
@@ -85,7 +90,10 @@ export function DocumentEditorPage() {
   const [title, setTitle] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  // 복원 시에만 편집기를 리마운트해 되돌린 본문을 반영한다(저장 때마다 리마운트되면 커서가 초기화됨).
+  const [restoreSeq, setRestoreSeq] = useState(0);
 
   // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
   useEffect(() => {
@@ -142,7 +150,8 @@ export function DocumentEditorPage() {
     );
   }
 
-  const owner = data.updateUser ?? data.createUser ?? "Unknown";
+  const ownerName = data.updateUser ?? data.createUser ?? "Unknown";
+  const ownerEmail = session?.email ?? null;
 
   // 진입 경로: 목록에서 넘겨준 state 우선, 없으면(새로고침/딥링크) folderId 로 트리에서 역산
   const statePath = (location.state as { folderPath?: FolderPathItem[] } | null)
@@ -189,6 +198,8 @@ export function DocumentEditorPage() {
           onToggleFavorite={() => setIsFavorite((v) => !v)}
           onSave={handleSave}
           onSummarize={handleSummarize}
+          onHistory={() => setHistoryOpen((v) => !v)}
+          isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
         />
       }
@@ -206,8 +217,10 @@ export function DocumentEditorPage() {
           />
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
-              <Avatar name={owner} size="sm" />
-              <span className="text-foreground">{owner}</span>
+              <Avatar name={ownerName} size="sm" />
+              <span className="text-foreground">
+                {ownerEmail ?? ownerName}
+              </span>
             </span>
             {data.updateTime && (
               <span>Updated {formatUpdated(data.updateTime)}</span>
@@ -218,12 +231,26 @@ export function DocumentEditorPage() {
         {/* Writing area — BlockNote */}
         <div className="min-h-0 flex-1">
           <DocumentEditor
-            key={documentId}
+            key={`${documentId}-${restoreSeq}`}
             ref={editorRef}
             initialBlocks={parseBlocks(data.blocks)}
           />
         </div>
       </div>
+
+      {/* 버전 기록 패널 */}
+      <DocumentHistorySidePanel
+        open={historyOpen}
+        documentId={documentId}
+        currentTitle={data.title}
+        currentUser={ownerEmail ?? ownerName}
+        currentUpdateTime={data.updateTime}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={(restored) => {
+          setTitle(restored.title);
+          setRestoreSeq((seq) => seq + 1);
+        }}
+      />
 
       {/* AI summary panel */}
       <AiSummaryPanel

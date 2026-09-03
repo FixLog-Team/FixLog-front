@@ -59,3 +59,28 @@ export interface ListDocumentsParams {
   page?: number;
   size?: number;
 }
+
+/** 히스토리 버전이 만들어진 계기. RESTORE 는 복원으로 밀려난 버전. */
+export type DocumentHistorySource = 'MANUAL' | 'RESTORE';
+
+/** GET /api/documents/{id}/history 목록 항목. 본문(blocks)은 상세에서만 내려온다. */
+export interface DocumentHistoryDto {
+  historyId: string;
+  title: string;
+  source: DocumentHistorySource;
+  createUser: string | null;
+  createTime: string; // ISO-8601
+}
+
+/** GET /api/documents/{id}/history/{historyId} 응답. blocks 는 BlockNote 형식으로 변환되어 있다. */
+export interface DocumentHistoryDetailDto {
+  historyId: string;
+  documentId: string;
+  title: string;
+  /** 해당 시점 본문(BlockNote 블록 트리)의 JSON 문자열. */
+  blocks: string | null;
+  contentHash: string | null;
+  source: DocumentHistorySource;
+  createUser: string | null;
+  createTime: string; // ISO-8601
+}

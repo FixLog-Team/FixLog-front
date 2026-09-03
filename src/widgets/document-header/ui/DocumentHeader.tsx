@@ -3,6 +3,7 @@ import {
   ChevronRight,
   FolderPlus,
   FilePlus,
+  History,
   Star,
   Share2,
   Sparkles,
@@ -32,6 +33,8 @@ interface DocumentHeaderProps {
   isSaving?: boolean;
   isSaved?: boolean;
   onSummarize?: () => void;
+  onHistory?: () => void;
+  isHistoryOpen?: boolean;
   onDelete?: () => void;
 }
 
@@ -47,6 +50,8 @@ export function DocumentHeader({
   isSaving = false,
   isSaved = false,
   onSummarize,
+  onHistory,
+  isHistoryOpen = false,
   onDelete,
 }: DocumentHeaderProps) {
   return (
@@ -73,6 +78,16 @@ export function DocumentHeader({
             onClick={onToggleFavorite}
           >
             <Star className={cn(isFavorite && 'fill-current text-primary')} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="버전 기록"
+            title="버전 기록"
+            className={cn(isHistoryOpen && 'bg-accent text-primary')}
+            onClick={onHistory}
+          >
+            <History />
           </Button>
           <Button variant="secondary" size="sm" onClick={onShare}>
             <Share2 />
