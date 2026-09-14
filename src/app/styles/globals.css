@@ -156,6 +156,16 @@
   color: var(--bn-muted-text);
 }
 
+/* 텍스트 선택 시 뜨는 서식 툴바 / 링크 툴바 — shadcn Toolbar 가 기대하는 bg-popover 유틸리티가
+   이 프로젝트 Tailwind 빌드에는 없어 배경이 투명해지므로, 드롭다운과 같은 불투명 흰색으로 지정 */
+.bn-shadcn .bn-toolbar {
+  background-color: #ffffff !important;
+  color: var(--foreground);
+  border: 1px solid var(--bn-border-color) !important;
+  border-radius: var(--bn-menu-radius) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
 /* Color 버튼 — ghost 버튼 hover 강화 (Delete와 동일한 스타일) */
 .bn-shadcn button[data-test="colors"] {
   border-radius: var(--bn-item-radius);

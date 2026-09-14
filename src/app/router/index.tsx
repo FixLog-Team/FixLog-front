@@ -78,6 +78,20 @@ export const router = createBrowserRouter([
             Component: m.SettingsPage,
           })),
       },
+      {
+        path: ROUTES.INVITE,
+        lazy: () =>
+          import('@/pages/invite/ui/InviteResponsePage').then((m) => ({
+            Component: m.InviteResponsePage,
+          })),
+      },
+      {
+        path: `${ROUTES.ADMIN}/*`,
+        lazy: () =>
+          import('@/pages/fixlog-admin/ui/FixLogAdminPage').then((m) => ({
+            Component: m.FixLogAdminPage,
+          })),
+      },
     ],
   },
 ]);
