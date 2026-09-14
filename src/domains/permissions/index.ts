@@ -1,8 +1,10 @@
 export { permissionsApi } from '@/domains/permissions/api/permissions.api';
 export type {
   PermissionDto,
-  PermissionLevel,
+  PermissionType,
+  PermissionSource,
   PrincipalType,
   ResourceKind,
   ShareBody,
+  MyPermissionDto,
 } from '@/domains/permissions/types/permission';

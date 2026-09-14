@@ -10,7 +10,7 @@ import {
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { cn } from '@/shared/lib/utils/index';
-import type { PermissionLevel, ResourceKind } from '@/domains/permissions';
+import type { PermissionType, ResourceKind } from '@/domains/permissions';
 import {
   useResourcePermissions,
   useShareResource,
@@ -25,15 +25,16 @@ interface ShareDialogProps {
   name: string;
 }
 
-const LEVELS: { value: PermissionLevel; label: string }[] = [
-  { value: 'VIEWER', label: '뷰어 (조회)' },
-  { value: 'EDITOR', label: '편집자 (조회·편집)' },
-  { value: 'OWNER', label: '소유자 (전체)' },
+/** 권한 타입 선택지. 최신 모델은 ALLOW(허용)/DENY(차단) 이진값이다. */
+const PERMISSION_TYPES: { value: PermissionType; label: string }[] = [
+  { value: 'ALLOW', label: '허용 (조회)' },
+  { value: 'DENY', label: '차단 (접근 거부)' },
 ];
 
 /**
  * 공유 다이얼로그(문서/폴더 공통). 현재 공유 대상 목록 + 이메일로 새 공유 부여.
- * 소유자만 공유를 볼/설정할 수 있어, 권한이 없으면 목록 조회가 실패하고 안내 문구를 보인다.
+ * 권한 모델: ALLOW(허용)/DENY(차단) + canDownload. DENY 는 상속된 허용보다 우선해 접근을 막는다.
+ * 소유자·Admin 만 공유를 볼/설정할 수 있어, 권한이 없으면 목록 조회가 실패하고 안내 문구를 보인다.
  */
 export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogProps) {
   // Hooks
@@ -43,17 +44,20 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
 
   // State
   const [email, setEmail] = useState('');
-  const [level, setLevel] = useState<PermissionLevel>('VIEWER');
+  const [permissionType, setPermissionType] = useState<PermissionType>('ALLOW');
   const [canDownload, setCanDownload] = useState(true);
 
   // Effects — 열릴 때 입력 초기화
   useEffect(() => {
     if (open) {
       setEmail('');
-      setLevel('VIEWER');
+      setPermissionType('ALLOW');
       setCanDownload(true);
     }
   }, [open]);
+
+  // Variables
+  const isDeny = permissionType === 'DENY';
 
   // Functions
   const handleShare = async (e: React.FormEvent) => {
@@ -61,7 +65,12 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
     const target = email.trim();
     if (!target) return;
     try {
-      await share.mutateAsync({ email: target, level, canDownload });
+      // 차단(DENY)에는 다운로드 개념이 없으므로 canDownload 는 허용일 때만 의미 있다.
+      await share.mutateAsync({
+        email: target,
+        permissionType,
+        canDownload: isDeny ? false : canDownload,
+      });
       setEmail('');
     } catch (error) {
       console.error('Failed to share:', error);
@@ -91,20 +100,26 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
           />
           <div className="flex items-center gap-2">
             <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value as PermissionLevel)}
+              value={permissionType}
+              onChange={(e) => setPermissionType(e.target.value as PermissionType)}
               className="h-9 flex-1 rounded-md border border-border bg-card px-2 text-sm text-foreground outline-none focus:border-primary"
             >
-              {LEVELS.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
+              {PERMISSION_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
                 </option>
               ))}
             </select>
-            <label className="flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
+            <label
+              className={cn(
+                'flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground',
+                isDeny && 'opacity-40'
+              )}
+            >
               <input
                 type="checkbox"
-                checked={canDownload}
+                checked={canDownload && !isDeny}
+                disabled={isDeny}
                 onChange={(e) => setCanDownload(e.target.checked)}
               />
               다운로드 허용
@@ -113,10 +128,15 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
               {share.isPending ? '공유 중…' : '공유'}
             </Button>
           </div>
+          {isDeny && (
+            <p className="text-xs text-muted-foreground">
+              차단은 상속으로 열린 접근까지 막습니다. 같은 워크스페이스 구성원에게만 적용됩니다.
+            </p>
+          )}
           {share.isError && (
             <p className="text-xs text-destructive">
               공유에 실패했습니다. 대상이 같은 워크스페이스 구성원인지, 본인이
-              소유자인지 확인하세요.
+              소유자 또는 관리자인지 확인하세요.
             </p>
           )}
         </form>
@@ -130,7 +150,7 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
             <p className="py-2 text-sm text-muted-foreground">불러오는 중…</p>
           ) : permissions.isError ? (
             <p className="py-2 text-sm text-muted-foreground">
-              공유 목록을 볼 수 없습니다. 소유자만 공유를 설정할 수 있습니다.
+              공유 목록을 볼 수 없습니다. 소유자·관리자만 공유를 설정할 수 있습니다.
             </p>
           ) : items.length === 0 ? (
             <p className="py-2 text-sm text-muted-foreground">
@@ -153,11 +173,14 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
                   </span>
                   <span
                     className={cn(
-                      'shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground'
+                      'shrink-0 rounded-full px-2 py-0.5 text-xs',
+                      p.permissionType === 'DENY'
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-success/10 text-success'
                     )}
                   >
-                    {p.level}
-                    {!p.canDownload && ' · 반출금지'}
+                    {p.permissionType === 'DENY' ? '차단' : '허용'}
+                    {p.permissionType === 'ALLOW' && !p.canDownload && ' · 반출금지'}
                   </span>
                   <button
                     type="button"

@@ -5,12 +5,14 @@ import type {
   PermissionDto,
   ShareBody,
   ResourceKind,
+  MyPermissionDto,
 } from '@/domains/permissions/types/permission';
 
 /**
  * 공유(권한) API (FRONTEND_API_GUIDE 9장). 문서·폴더가 같은 규칙.
+ *   GET    /api/{documents|folders}/{id}/my-permission          → 내 유효 권한(출처 포함)
  *   GET    /api/{documents|folders}/{id}/permissions            → list (공유 설정 가능자만)
- *   POST   /api/{documents|folders}/{id}/permissions            → share (OWNER만, upsert)
+ *   POST   /api/{documents|folders}/{id}/permissions            → share (소유자·Admin, upsert)
  *   DELETE /api/{documents|folders}/{id}/permissions/{permId}   → revoke
  *   GET    /api/documents/shared-with-me                        → 내가 권한 받은 문서
  */
@@ -18,6 +20,14 @@ const resourcePath = (kind: ResourceKind) =>
   kind === 'document' ? '/api/documents' : '/api/folders';
 
 export const permissionsApi = {
+  /** 내가 이 리소스에 대해 갖는 유효 권한 + 출처(다운로드/편집 버튼 노출 판단용). */
+  async myPermission(kind: ResourceKind, id: string): Promise<MyPermissionDto> {
+    const res = await http.get<ApiResponse<MyPermissionDto>>(
+      `${resourcePath(kind)}/${id}/my-permission`
+    );
+    return unwrap(res);
+  },
+
   async list(kind: ResourceKind, id: string): Promise<PermissionDto[]> {
     const res = await http.get<ApiResponse<PermissionDto[]>>(
       `${resourcePath(kind)}/${id}/permissions`
