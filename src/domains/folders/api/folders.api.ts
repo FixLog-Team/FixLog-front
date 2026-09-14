@@ -1,5 +1,10 @@
 import { http, unwrap, ensureSuccess } from '@/shared/lib/http/client';
 import type { ApiResponse } from '@/shared/types';
+import type { ResourcePermissionDto } from '@/domains/documents/types/document';
+import {
+  normalizeResourceAccessError,
+  ResourceAccessDeniedError,
+} from '@/shared/lib/http/resource-access-error';
 import type {
   FolderItem,
   FolderContents,
@@ -38,14 +43,36 @@ export const foldersApi = {
     return unwrap(res);
   },
 
-  /** 특정 폴더의 하위 폴더 + 문서 조회. */
+  /** 현재 사용자의 폴더 유효 권한 조회. */
+  async getMyPermission(folderId: string): Promise<ResourcePermissionDto> {
+    try {
+      const res = await http.get<ApiResponse<ResourcePermissionDto>>(
+        `${PATH}/${folderId}/my-permission`
+      );
+      return unwrap(res);
+    } catch (error) {
+      return normalizeResourceAccessError(error);
+    }
+  },
+
+  /** 특정 폴더의 하위 폴더 + 문서 조회. 권한 확인 후에만 내용을 요청한다. */
   async getFolderContents(folderId: string): Promise<FolderContents> {
+    const permission = await foldersApi.getMyPermission(folderId);
+    if (!permission.access) {
+      throw new ResourceAccessDeniedError();
+    }
+
     const res = await http.get<ApiResponse<FolderContents>>(`${PATH}/${folderId}/contents`);
     return unwrap(res);
   },
 
-  /** 폴더 단건 조회. */
+  /** 폴더 단건 조회. 권한 확인 후에만 폴더 정보를 요청한다. */
   async getFolder(folderId: string): Promise<FolderItem> {
+    const permission = await foldersApi.getMyPermission(folderId);
+    if (!permission.access) {
+      throw new ResourceAccessDeniedError();
+    }
+
     const res = await http.get<ApiResponse<FolderItem>>(`${PATH}/${folderId}`);
     return unwrap(res);
   },

@@ -20,6 +20,15 @@ export interface DocumentDto {
   updateTime: string | null; // ISO-8601
 }
 
+/** 문서/폴더에 대한 현재 사용자의 유효 권한. */
+export interface ResourcePermissionDto {
+  access: boolean;
+  canDownload: boolean;
+  canEdit: boolean;
+  source: 'DIRECT' | 'INHERITED' | 'WORKSPACE_DEFAULT';
+  sourceDetail: string | null;
+}
+
 /** POST /api/documents/{id}/duplicate 응답. */
 export interface DocumentDuplicateDto {
   newDocumentId: string;

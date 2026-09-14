@@ -1,6 +1,10 @@
 import { http, unwrap, ensureSuccess } from '@/shared/lib/http/client';
 import type { ApiResponse, PageResponse } from '@/shared/types';
 import {
+  normalizeResourceAccessError,
+  ResourceAccessDeniedError,
+} from '@/shared/lib/http/resource-access-error';
+import {
   blockNoteToEditorJs,
   editorJsToBlockNote,
 } from '@/shared/lib/editor/block-format-converter';
@@ -14,6 +18,7 @@ import type {
   MoveDocumentBody,
   RenameDocumentBody,
   ListDocumentsParams,
+  ResourcePermissionDto,
 } from '@/domains/documents/types/document';
 
 /**
@@ -56,8 +61,28 @@ export const documentsApi = {
     return unwrap(res);
   },
 
-  /** 문서 상세(본문 blocks 포함). 서버 Editor.js blocks 를 BlockNote 로 변환해 반환. */
+  /** 현재 사용자의 문서 유효 권한 조회. */
+  async getMyPermission(documentId: string): Promise<ResourcePermissionDto> {
+    try {
+      const res = await http.get<ApiResponse<ResourcePermissionDto>>(
+        `${PATH}/${documentId}/my-permission`
+      );
+      return unwrap(res);
+    } catch (error) {
+      return normalizeResourceAccessError(error);
+    }
+  },
+
+  /**
+   * 문서 상세(본문 blocks 포함).
+   * 직접 URL 진입에서도 본문 요청 전에 유효 권한을 확인한다.
+   */
   async getDocument(documentId: string): Promise<DocumentDto> {
+    const permission = await documentsApi.getMyPermission(documentId);
+    if (!permission.access) {
+      throw new ResourceAccessDeniedError();
+    }
+
     const res = await http.get<ApiResponse<DocumentDto>>(`${PATH}/${documentId}`);
     const dto = unwrap(res);
     if (dto.blocks) {
