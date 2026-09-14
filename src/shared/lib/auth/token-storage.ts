@@ -33,3 +33,21 @@ export const tokenStorage = {
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   },
 };
+
+/**
+ * JWT 의 subject(=userId)를 동기적으로 디코드한다. 서명 검증은 하지 않으며(서버가 검증),
+ * 계정 전환/로그인 직후 사용자별 마지막 워크스페이스를 복원하는 용도로만 쓴다.
+ */
+export function decodeUserId(token: string | null | undefined): string | null {
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '='));
+    const sub = (JSON.parse(json) as { sub?: string }).sub;
+    return sub ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Sparkles,
@@ -13,7 +13,7 @@ import {
   ChevronsUpDown,
   Check,
   Trash2,
-  Users,
+  LayoutDashboard,
 } from "lucide-react";
 import { ROUTES } from "@/shared/constants/routes";
 import { searchConversationPath } from "@/shared/constants/routes";
@@ -32,9 +32,11 @@ import { useSession } from "@/domains/auth";
 import { useConversations } from "@/domains/ai/hooks/use-conversations";
 import { useWorkspaces, workspacesApi } from "@/domains/workspaces";
 import { workspaceStorage } from "@/shared/lib/workspace/workspace-storage";
-import { tokenStorage } from "@/shared/lib/auth/token-storage";
+import { tokenStorage, decodeUserId } from "@/shared/lib/auth/token-storage";
 import { DEV_ACCOUNTS } from "@/shared/lib/auth/dev-accounts";
-import { MemberManageDialog } from "@/features/workspaces/manage-members/ui/MemberManageDialog";
+import { NameInputDialog } from "@/shared/ui/name-input-dialog";
+import { getApiErrorMessage } from "@/shared/lib/http/error-message";
+import { CreateFolderDialog } from "@/features/folders/create-folder/ui/CreateFolderDialog";
 
 interface NavItem {
   label: string;
@@ -43,27 +45,31 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home", to: ROUTES.WORKSPACE, icon: Home },
-  { label: "AI Search", to: ROUTES.SEARCH, icon: Sparkles },
-  { label: "Documents", to: ROUTES.DOCUMENTS, icon: Folder },
+  { label: "홈", to: ROUTES.WORKSPACE, icon: Home },
+  { label: "AI 검색", to: ROUTES.SEARCH, icon: Sparkles },
+  { label: "문서", to: ROUTES.DOCUMENTS, icon: Folder },
   { label: "휴지통", to: ROUTES.TRASH, icon: Trash2 },
   // TODO: Recent/Favorites 기능 연동 전까지 임시 비활성화
   // { label: 'Recent', to: `${ROUTES.DOCUMENTS}?view=recent`, icon: Clock },
   // { label: 'Favorites', to: `${ROUTES.DOCUMENTS}?view=favorites`, icon: Star },
-  { label: "Settings", to: ROUTES.SETTINGS, icon: Settings },
+  { label: "설정", to: ROUTES.SETTINGS, icon: Settings },
 ];
 
 export function Sidebar() {
   // Hooks
   const location = useLocation();
+  const navigate = useNavigate();
   const { folders } = useRootFolders(true);
   const { data: session } = useSession();
   const { data: conversationPage } = useConversations(5);
   const conversations = conversationPage?.items ?? [];
   const { data: workspaces } = useWorkspaces();
 
-  // State
-  const [manageOpen, setManageOpen] = useState(false);
+  // State — 팝업(폴더 생성 / 워크스페이스 생성)
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [createWorkspaceError, setCreateWorkspaceError] = useState<string | null>(null);
 
   // Variables
   const currentWorkspaceId = workspaceStorage.get();
@@ -71,11 +77,27 @@ export function Sidebar() {
     workspaces?.find((w) => w.workspaceId === currentWorkspaceId) ??
     workspaces?.find((w) => w.personal) ??
     workspaces?.[0];
-  // 관리 버튼: 팀(비개인) 워크스페이스의 관리자에게만 노출.
+  // FixLog Admin 링크: 팀(비개인) 워크스페이스의 관리자에게만 노출.
   const canManage =
     !!currentWorkspace &&
     !currentWorkspace.personal &&
-    currentWorkspace.role === "ADMIN";
+    (currentWorkspace.role === "ADMIN" || currentWorkspace.role === "OWNER");
+
+  // Effects
+  // 워크스페이스 목록이 오면 (1) 현재 선택을 이 계정의 "마지막 접속 워크스페이스"로 기록하고,
+  // (2) 선택이 이 계정에서 접근 불가한 값(삭제/권한 회수)이면 비우고 재로드해 개인 스코프로 되돌린다.
+  useEffect(() => {
+    const userId = session?.userId;
+    if (!userId || !workspaces) return;
+    const stored = workspaceStorage.get();
+    if (!stored) return;
+    if (workspaces.some((w) => w.workspaceId === stored)) {
+      workspaceStorage.setLastForUser(userId, stored);
+    } else {
+      workspaceStorage.clear();
+      window.location.href = ROUTES.WORKSPACE;
+    }
+  }, [session?.userId, workspaces]);
 
   // Functions
   const isActive = (to: string) => {
@@ -87,24 +109,34 @@ export function Sidebar() {
   const switchWorkspace = (workspaceId: string) => {
     if (workspaceId === currentWorkspace?.workspaceId) return;
     workspaceStorage.set(workspaceId);
+    // 이 계정의 "마지막 접속 워크스페이스"로 즉시 기록(재로드 후 복원용).
+    if (session?.userId) workspaceStorage.setLastForUser(session.userId, workspaceId);
     window.location.href = ROUTES.WORKSPACE;
   };
 
-  const handleCreateWorkspace = async () => {
-    const name = window.prompt("워크스페이스 이름", "새 워크스페이스");
-    if (!name) return;
+  // 워크스페이스 생성 팝업 제출 → 성공 시 새 워크스페이스로 전환(하드 리로드).
+  const handleCreateWorkspace = async (name: string) => {
+    setIsCreatingWorkspace(true);
+    setCreateWorkspaceError(null);
     try {
       const created = await workspacesApi.create({ workspaceName: name });
+      setCreateWorkspaceOpen(false);
       switchWorkspace(created.workspaceId);
     } catch (error) {
-      console.error("Failed to create workspace:", error);
+      setCreateWorkspaceError(getApiErrorMessage(error, "워크스페이스 생성에 실패했습니다."));
+    } finally {
+      setIsCreatingWorkspace(false);
     }
   };
 
-  // ⚠️ 임시(테스트용): 권한별 계정 전환. 토큰 교체 후 워크스페이스 선택을 비우고 하드 리로드.
+  // ⚠️ 임시(테스트용): 권한별 계정 전환. 토큰 교체 후, 그 계정이 마지막으로 보던 워크스페이스로 복원한다.
   const switchAccount = (token: string) => {
     tokenStorage.save(token, token);
-    workspaceStorage.clear();
+    // 새 계정의 마지막 워크스페이스로 복원(없으면 개인 워크스페이스). 이전 계정 선택이 새 계정으로 새지 않게 한다.
+    const nextUserId = decodeUserId(token);
+    const last = nextUserId ? workspaceStorage.getLastForUser(nextUserId) : null;
+    if (last) workspaceStorage.set(last);
+    else workspaceStorage.clear();
     window.location.href = ROUTES.WORKSPACE;
   };
 
@@ -131,9 +163,11 @@ export function Sidebar() {
                 {currentWorkspace
                   ? currentWorkspace.personal
                     ? "개인 워크스페이스"
-                    : currentWorkspace.role === "ADMIN"
-                      ? "관리자"
-                      : "구성원"
+                    : currentWorkspace.role === "OWNER"
+                      ? "소유자"
+                      : currentWorkspace.role === "ADMIN"
+                        ? "관리자"
+                        : "구성원"
                   : " "}
               </span>
             </span>
@@ -149,7 +183,7 @@ export function Sidebar() {
               <span className="min-w-0 flex-1 truncate">
                 {ws.workspaceName}
                 <span className="ml-1 text-xs text-muted-foreground">
-                  {ws.personal ? "개인" : ws.role === "ADMIN" ? "관리자" : "구성원"}
+                  {ws.personal ? "개인" : ws.role === "OWNER" ? "소유자" : ws.role === "ADMIN" ? "관리자" : "구성원"}
                 </span>
               </span>
               {ws.workspaceId === currentWorkspace?.workspaceId && (
@@ -158,7 +192,7 @@ export function Sidebar() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={handleCreateWorkspace}>
+          <DropdownMenuItem onSelect={() => setCreateWorkspaceOpen(true)}>
             <Plus />
             새 워크스페이스
           </DropdownMenuItem>
@@ -205,16 +239,20 @@ export function Sidebar() {
           </div>
         ))}
 
-        {/* 관리 — 팀 워크스페이스 관리자에게만 노출(Settings 아래) */}
+        {/* FixLog Admin — 팀 워크스페이스 관리자에게만 노출(Settings 아래). 멤버 관리 팝업 기능을 흡수했다. */}
         {canManage && (
-          <button
-            type="button"
-            onClick={() => setManageOpen(true)}
-            className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          <Link
+            to={ROUTES.ADMIN}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+              location.pathname.startsWith(ROUTES.ADMIN)
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-foreground hover:bg-muted",
+            )}
           >
-            <Users className="size-[18px] shrink-0" />
-            <span>관리</span>
-          </button>
+            <LayoutDashboard className="size-[18px] shrink-0" />
+            <span>관리자 콘솔</span>
+          </Link>
         )}
       </nav>
 
@@ -222,21 +260,27 @@ export function Sidebar() {
       <div className="flex min-h-0 flex-1 flex-col px-2">
         <div className="flex items-center justify-between px-2.5 pb-1 pt-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Folders
+            폴더
           </span>
-          <Link
-            to={ROUTES.DOCUMENTS}
+          {/* 폴더 생성 팝업(백업본 기능 복구). 성공 시에만 새 폴더로 이동한다. */}
+          <button
+            type="button"
+            onClick={() => setCreateFolderOpen(true)}
             className="text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Manage folders"
+            aria-label="폴더 생성"
           >
             <Plus className="size-4" />
-          </Link>
+          </button>
         </div>
         <div className="flex flex-col gap-0.5 overflow-y-auto">
           {folders.map((folder) => (
             <Link
               key={folder.folderId}
               to={ROUTES.DOCUMENTS}
+              // Documents 페이지가 이 경로를 읽어 해당 폴더를 연다(백업본 기능 복구).
+              state={{
+                folderPath: [{ folderId: folder.folderId, folderName: folder.folderName }],
+              }}
               className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted"
             >
               <Hash className="size-4 shrink-0 text-muted-foreground" />
@@ -289,16 +333,31 @@ export function Sidebar() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* 멤버 관리 팝업(관리자) */}
-      {currentWorkspace && (
-        <MemberManageDialog
-          open={manageOpen}
-          onOpenChange={setManageOpen}
-          workspaceId={currentWorkspace.workspaceId}
-          workspaceName={currentWorkspace.workspaceName}
-        />
-      )}
+      {/* 팝업들 */}
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        parentId={null}
+        onCreated={(folder) =>
+          navigate(ROUTES.DOCUMENTS, {
+            state: { folderPath: [{ folderId: folder.folderId, folderName: folder.folderName }] },
+          })
+        }
+      />
+      <NameInputDialog
+        open={createWorkspaceOpen}
+        onOpenChange={(o) => {
+          if (!o) setCreateWorkspaceError(null);
+          setCreateWorkspaceOpen(o);
+        }}
+        title="새 워크스페이스"
+        description="팀 워크스페이스를 만듭니다. 만든 사람이 소유자가 됩니다."
+        placeholder="워크스페이스 이름"
+        defaultValue="새 워크스페이스"
+        isPending={isCreatingWorkspace}
+        errorMessage={createWorkspaceError}
+        onSubmit={handleCreateWorkspace}
+      />
     </aside>
   );
 }
