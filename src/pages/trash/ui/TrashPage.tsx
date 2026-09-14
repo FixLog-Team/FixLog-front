@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { koDateTime } from '@/shared/lib/date/format';
 import { Folder, FileText, RotateCcw, Trash2 } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
@@ -20,13 +21,7 @@ function formatDeleted(dateStr: string | null): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return koDateTime(date);
 }
 
 export function TrashPage() {

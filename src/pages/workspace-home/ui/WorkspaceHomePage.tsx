@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { koDate } from '@/shared/lib/date/format';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -23,21 +24,21 @@ import type { DemoDocument } from '@/domains/documents/lib/mock-data/demo-docume
 import { documentsApi } from '@/domains/documents/api/documents.api';
 import type { DocumentDto } from '@/domains/documents/types/document';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
-import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
+import { CreateFolderDialog } from '@/features/folders/create-folder/ui/CreateFolderDialog';
 import { useRecentFolders } from '@/domains/folders/hooks/use-recent-folders';
 import type { RecentFolder } from '@/domains/folders/hooks/use-recent-folders';
 import { useDocumentLabels } from '@/domains/labels';
 
 const SUGGESTIONS = [
-  'Find documents related to pagination bugs',
-  'Show me the latest release checklist',
-  'Summarize onboarding documents for new team members',
-  'Find payment error handling guides',
+  '페이지네이션 버그 관련 문서 찾기',
+  '최신 릴리스 체크리스트 보기',
+  '신규 팀원 온보딩 문서 요약',
+  '결제 오류 처리 가이드 찾기',
 ];
 
 const QUICK_ACTIONS = [
-  { key: 'new-document', label: 'New Document', icon: FilePlus },
-  { key: 'new-folder', label: 'New Folder', icon: FolderPlus },
+  { key: 'new-document', label: '새 문서', icon: FilePlus },
+  { key: 'new-folder', label: '새 폴더', icon: FolderPlus },
   { key: 'import', label: 'Import Documents', icon: Upload },
 ] as const;
 
@@ -55,7 +56,7 @@ export function WorkspaceHomePage() {
   // Hooks
   const navigate = useNavigate();
   const createDocument = useCreateDocument();
-  const createFolder = useCreateFolder();
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   // 최근 수정 문서: folderId 미지정 목록은 updateTime DESC 이므로 상위 N개가 최신순.
   const recentQuery = useQuery({
     queryKey: ['documents', 'recent'],
@@ -79,7 +80,7 @@ export function WorkspaceHomePage() {
     try {
       const created = await createDocument.mutateAsync({
         folderId: null,
-        title: 'Untitled',
+        title: '제목 없음',
       });
       navigate(documentDetailPath(created.documentId));
     } catch (error) {
@@ -87,17 +88,8 @@ export function WorkspaceHomePage() {
     }
   };
 
-  // 사이드바 FOLDERS + 버튼과 동일: 팝업 → 생성 성공 시에만 Documents 로 이동(사이드바 자동 갱신).
-  const handleCreateFolder = async () => {
-    const folderName = window.prompt('폴더 이름을 입력하세요', 'New Folder');
-    if (!folderName) return;
-    try {
-      await createFolder.mutateAsync({ parentId: null, folderName });
-      navigate(ROUTES.DOCUMENTS);
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
-  };
+  // 사이드바 FOLDERS + 버튼과 동일한 팝업. 생성 성공 시에만 새 폴더로 이동(사이드바 자동 갱신).
+  const handleCreateFolder = () => setCreateFolderOpen(true);
 
   const handleQuickAction = (key: (typeof QUICK_ACTIONS)[number]['key']) => {
     if (key === 'new-document') handleCreateDocument();
@@ -110,7 +102,7 @@ export function WorkspaceHomePage() {
     <AppShell
       header={
         <PageHeader
-          title="Home"
+          title="홈"
           action={
             <Button size="sm" onClick={handleCreateDocument}>
               <FilePlus />
@@ -142,12 +134,12 @@ export function WorkspaceHomePage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask FixLog to find the document you need..."
+            placeholder="FixLog에게 필요한 문서를 찾아달라고 해보세요..."
             className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
           />
           <button
             type="submit"
-            aria-label="Search"
+            aria-label="검색"
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
           >
             <ArrowUp className="size-4" />
@@ -230,7 +222,7 @@ export function WorkspaceHomePage() {
           <section>
             <div className="mb-3 flex items-center gap-1.5">
               <Star className="size-4 text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Pinned</h2>
+              <h2 className="text-sm font-semibold text-foreground">고정됨</h2>
             </div>
             <div className="space-y-1">
               {PINNED.map((doc) => (
@@ -274,6 +266,16 @@ export function WorkspaceHomePage() {
           )}
         </section>
       </div>
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        parentId={null}
+        onCreated={(folder) =>
+          navigate(ROUTES.DOCUMENTS, {
+            state: { folderPath: [{ folderId: folder.folderId, folderName: folder.folderName }] },
+          })
+        }
+      />
     </AppShell>
   );
 }
@@ -371,11 +373,7 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return koDate(date);
 }
 
 /** 상대 시간 표기(디자인: "2 days ago" 등). 오래되면 절대 날짜로 대체. */
@@ -384,19 +382,15 @@ function formatRelative(dateStr: string | null): string {
   const then = new Date(dateStr).getTime();
   if (Number.isNaN(then)) return '';
   const minutes = Math.floor((Date.now() - then) / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+  if (days < 7) return `${days}일 전`;
   const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  if (weeks < 5) return `${weeks}주 전`;
+  return koDate(new Date(dateStr));
 }
 
 function greeting(): string {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Sparkles, ArrowUp, SquarePen } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
@@ -8,10 +8,10 @@ import { useAiChat } from '@/features/ai/chat/hooks/use-ai-chat';
 import { ROUTES } from '@/shared/constants/routes';
 
 const SUGGESTIONS = [
-  'Find documents related to pagination bugs',
-  'Show me the latest release checklist',
-  'Summarize onboarding documents for new team members',
-  'Find payment error handling guides',
+  '페이지네이션 버그 관련 문서 찾기',
+  '최신 릴리스 체크리스트 보기',
+  '신규 팀원 온보딩 문서 요약',
+  '결제 오류 처리 가이드 찾기',
 ];
 
 export function SearchPage() {
@@ -21,10 +21,12 @@ export function SearchPage() {
   // Hooks
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const chat = useAiChat(conversationId);
 
   // Refs
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
+  const autoQueryRef = useRef<string | null>(null);
 
   // Variables
   const hasStarted = chat.turns.length > 0;
@@ -33,6 +35,15 @@ export function SearchPage() {
   useEffect(() => {
     bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat.turns]);
+
+  // Home 검색창 등에서 ?q= 로 넘어온 검색어를 첫 메시지로 자동 전송한다(백업본 기능 복구).
+  // 같은 q 는 다시 보내지 않고(StrictMode 이중 호출 방지), 전송 후 URL 에서 q 를 지운다.
+  useEffect(() => {
+    const q = searchParams.get('q')?.trim();
+    if (!q || conversationId || autoQueryRef.current === q) return;
+    autoQueryRef.current = q;
+    if (chat.send(q)) setSearchParams({}, { replace: true });
+  }, [searchParams, conversationId, chat, setSearchParams]);
 
   // Functions
   const submit = (text: string) => {
@@ -58,7 +69,7 @@ export function SearchPage() {
       scroll={false}
       header={
         <PageHeader
-          title="AI Search"
+          title="AI 검색"
           action={
             hasStarted ? (
               <button
@@ -177,14 +188,14 @@ export function SearchPage() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={
                   hasStarted
-                    ? 'Ask a follow-up question...'
-                    : 'Ask FixLog to find a document...'
+                    ? '이어서 질문하기...'
+                    : 'FixLog에게 문서를 찾아달라고 해보세요...'
                 }
                 className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
               <button
                 type="submit"
-                aria-label="Send"
+                aria-label="보내기"
                 className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
                 disabled={!query.trim() || chat.isPending}
               >

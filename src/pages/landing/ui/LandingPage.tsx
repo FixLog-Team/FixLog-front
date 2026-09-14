@@ -11,32 +11,32 @@ import { Logo } from "@/shared/ui/logo";
 import { Button } from "@/shared/ui/button";
 import { ROUTES } from "@/shared/constants/routes";
 
-const NAV_LINKS = ["Product", "How it works", "Security"];
+const NAV_LINKS = ["제품", "작동 방식", "보안"];
 
 const FEATURES = [
   {
     icon: Search,
-    title: "Semantic search",
+    title: "의미 기반 검색",
     description:
-      "Find documents by meaning, not exact keywords. Ask in plain language and get the right answer.",
+      "정확한 키워드가 아니라 의미로 문서를 찾습니다. 자연어로 물어보면 알맞은 답을 드려요.",
   },
   {
     icon: FileText,
-    title: "AI summaries",
+    title: "AI 요약",
     description:
-      "Turn long documents into clear summaries, key decisions, and action items in one click.",
+      "긴 문서를 한 번의 클릭으로 명확한 요약·핵심 결정·할 일로 정리합니다.",
   },
   {
     icon: History,
-    title: "Version history",
+    title: "버전 기록",
     description:
-      "Every edit is saved. Review past versions and restore any point in a document’s history.",
+      "모든 편집이 저장됩니다. 지난 버전을 확인하고 원하는 시점으로 복원할 수 있어요.",
   },
   {
     icon: Lock,
-    title: "Off-premises",
+    title: "온프레미스",
     description:
-      "Runs in your own dedicated environment. Your data stays within your dedicated environment.",
+      "전용 환경에서 구동됩니다. 데이터는 전용 환경 안에 그대로 머뭅니다.",
   },
 ];
 
@@ -60,10 +60,10 @@ export function LandingPage() {
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
-              <Link to={ROUTES.LOGIN}>Sign in</Link>
+              <Link to={ROUTES.LOGIN}>로그인</Link>
             </Button>
             <Button asChild size="sm" className="rounded-full">
-              <Link to={ROUTES.WORKSPACE}>Try FixLog</Link>
+              <Link to={ROUTES.WORKSPACE}>FixLog 시작하기</Link>
             </Button>
           </div>
         </div>
@@ -73,19 +73,18 @@ export function LandingPage() {
       <section className="mx-auto max-w-3xl px-6 pb-16 pt-20 text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[13px] text-muted-foreground">
           <Sparkles className="size-3.5 text-primary" />
-          Off-premises AI Document Platform
+          온프레미스 AI 문서 플랫폼
         </span>
         <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-[-0.022em] text-foreground sm:text-6xl">
-          Find and understand your company documents faster.
+          회사 문서를 더 빠르게 찾고 이해하세요.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          FixLog is an Off-premises AI Document Platform that helps teams write,
-          organize, search, and summarize internal knowledge.
+          FixLog는 팀이 내부 지식을 작성·정리·검색·요약하도록 돕는 온프레미스 AI 문서 플랫폼입니다.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-full">
             <Link to={ROUTES.WORKSPACE}>
-              Try FixLog
+              FixLog 시작하기
               <ArrowRight />
             </Link>
           </Button>
@@ -95,7 +94,7 @@ export function LandingPage() {
             size="lg"
             className="rounded-full"
           >
-            <Link to={ROUTES.DOCUMENTS}>View Demo</Link>
+            <Link to={ROUTES.DOCUMENTS}>데모 보기</Link>
           </Button>
         </div>
 
@@ -113,16 +112,16 @@ export function LandingPage() {
             <div className="flex items-center gap-2.5 rounded-xl border border-border bg-muted px-4 py-3">
               <Sparkles className="size-4 text-primary" />
               <span className="text-sm text-muted-foreground">
-                Find documents related to payment error handling
+                결제 오류 처리 관련 문서 찾기
               </span>
             </div>
             <p className="mt-4 text-xs font-medium text-muted-foreground">
-              FixLog found 2 highly relevant documents
+              FixLog가 관련성 높은 문서 2건을 찾았습니다
             </p>
             <div className="mt-3 space-y-2">
               {[
-                "Payment Error Handling Guide",
-                "Production Incident Retrospective",
+                "결제 오류 처리 가이드",
+                "운영 장애 회고",
               ].map((title) => (
                 <div
                   key={title}
@@ -164,12 +163,12 @@ export function LandingPage() {
       {/* Footer CTA */}
       <section className="mx-auto max-w-3xl px-6 pb-24 text-center">
         <h2 className="text-3xl font-semibold tracking-tight text-foreground">
-          Start understanding your knowledge.
+          당신의 지식을 이해하기 시작하세요.
         </h2>
         <div className="mt-6">
           <Button asChild size="lg" className="rounded-full">
             <Link to={ROUTES.WORKSPACE}>
-              Try FixLog
+              FixLog 시작하기
               <ArrowRight />
             </Link>
           </Button>

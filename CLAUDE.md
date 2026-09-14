@@ -140,10 +140,10 @@ AI 처리 전반에서 생기는 모든 파생 데이터입니다.
 
 ### 4. 문서 히스토리 관리
 
-- 문서 수정 시마다 이전 버전이 History로 보관됩니다
-- 과거 내역 페이지에서 최신 순으로 나열됩니다
-- 각 내역마다 **롤백** 버튼이 존재합니다
-- 클릭 시 해당 내용으로 복원할 수 있습니다
+- 문서 저장 시마다 그 시점의 스냅샷이 리비전(revision)으로 보관됩니다 (직전과 내용이 같으면 생략)
+- 에디터의 "버전 기록" 사이드 패널에서 최신 순으로 나열됩니다
+- 각 리비전을 선택하면 본문 미리보기와 **복원** 버튼이 존재합니다
+- 복원 결과도 새 리비전으로 기록되므로(restoredFromNo) 다시 되돌릴 수 있습니다
 
 ---
 
@@ -202,11 +202,11 @@ AI 처리 전반에서 생기는 모든 파생 데이터입니다.
 
 - `POST /search` - 의미 기반 문서 검색
 
-### 문서 히스토리
+### 문서 리비전(버전 기록)
 
-- `GET /documents/{documentId}/history` - 문서 히스토리 목록 조회
-- `GET /documents/{documentId}/history/{historyId}` - 특정 히스토리 상세 조회
-- `POST /documents/{documentId}/history/{historyId}/restore` - 히스토리 기준 복원
+- `GET /documents/{documentId}/revisions` - 리비전 목록 조회 (최신순 배열, 본문 제외)
+- `GET /documents/{documentId}/revisions/{revisionNo}` - 특정 리비전 상세 조회 (본문 포함)
+- `POST /documents/{documentId}/revisions/{revisionNo}/restore` - 해당 리비전 내용으로 복원
 
 ### 사용자
 

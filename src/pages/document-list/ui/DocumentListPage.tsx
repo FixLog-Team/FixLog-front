@@ -7,7 +7,7 @@ import { foldersApi } from '@/domains/folders';
 import type { FolderItem, FolderPathItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
-import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
+import { CreateFolderDialog } from '@/features/folders/create-folder/ui/CreateFolderDialog';
 import { documentDetailPath } from '@/shared/constants/routes';
 
 export function DocumentListPage() {
@@ -15,9 +15,9 @@ export function DocumentListPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const createDocument = useCreateDocument();
-  const createFolder = useCreateFolder();
 
   // State
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [documents, setDocuments] = useState<DocumentDto[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<FolderPathItem[]>([]);
@@ -85,19 +85,8 @@ export function DocumentListPage() {
     }
   };
 
-  const promptAndCreateFolder = async (parentId: string | null) => {
-    const folderName = window.prompt('폴더 이름을 입력하세요', 'New Folder');
-    if (!folderName) return;
-    try {
-      await createFolder.mutateAsync({ parentId, folderName });
-      loadContents(parentId);
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
-  };
-
-  // 헤더의 New Folder 버튼: 현재 폴더에 생성(이벤트 인자를 받아도 무시).
-  const handleCreateFolder = () => promptAndCreateFolder(currentFolderId);
+  // 헤더의 New Folder 버튼: 팝업을 열고, 생성 성공 시 현재 폴더 내용을 다시 불러온다.
+  const handleCreateFolder = () => setCreateFolderOpen(true);
 
   // Effects
   useEffect(() => {
@@ -144,6 +133,12 @@ export function DocumentListPage() {
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}
         onChanged={() => loadContents(currentFolderId)}
+      />
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        parentId={currentFolderId}
+        onCreated={() => loadContents(currentFolderId)}
       />
     </AppShell>
   );
