@@ -26,8 +26,23 @@ export function DocumentLabels({ documentId }: DocumentLabelsProps) {
   // Variables
   const labels = data ?? [];
 
-  // 라벨이 없고 편집 중도 아니면 행 자체를 숨긴다.
-  if (labels.length === 0 && !isEditing) return null;
+  // 라벨이 없고 편집 중도 아니면, 직접 추가할 수 있도록 "라벨 추가" 버튼만 보여준다.
+  // (요약을 하지 않아도 라벨을 붙일 수 있게 함)
+  if (labels.length === 0 && !isEditing) {
+    return (
+      <div className="mt-2">
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-primary transition-colors hover:bg-muted"
+        >
+          <Plus className="size-3" />
+          라벨 추가
+        </button>
+        <AddLabelDialog open={addOpen} onOpenChange={setAddOpen} documentId={documentId} />
+      </div>
+    );
+  }
 
   // Render
   return (

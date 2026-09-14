@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { koDateTime } from '@/shared/lib/date/format';
 import {
   Search,
   SlidersHorizontal,
@@ -35,13 +36,7 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return koDateTime(date);
 }
 
 /** Enter/Space 로 행을 여는 키보드 핸들러(행이 div[role=button] 라 필요). */
@@ -74,7 +69,7 @@ export function DocumentListSection({
         <Input
           className="h-11 flex-1"
           icon={<Search />}
-          placeholder="Search this workspace..."
+          placeholder="이 워크스페이스에서 검색..."
         />
         <Button variant="secondary" className="h-11">
           <SlidersHorizontal />
@@ -106,10 +101,10 @@ export function DocumentListSection({
         <div
           className={`${GRID} border-b border-border px-4 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground`}
         >
-          <span>Name</span>
-          <span>Type</span>
-          <span>Owner</span>
-          <span className="text-right">Last updated</span>
+          <span>이름</span>
+          <span>유형</span>
+          <span>소유자</span>
+          <span className="text-right">수정일</span>
           <span />
         </div>
 
@@ -138,9 +133,9 @@ export function DocumentListSection({
                     {folder.folderName}
                   </span>
                 </span>
-                <span className="text-muted-foreground">Folder</span>
+                <span className="text-muted-foreground">폴더</span>
                 <OwnerCell name={folder.updateUser ?? folder.createUser} email={ownerEmail} />
-                <span className="text-right text-muted-foreground">
+                <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {formatUpdated(folder.updateTime)}
                 </span>
                 <span className="flex justify-end">
@@ -150,6 +145,7 @@ export function DocumentListSection({
                       id: folder.folderId,
                       name: folder.folderName,
                       parentId: folder.parentId,
+                      ownerId: folder.createUser,
                     }}
                     onChanged={notifyChanged}
                   />
@@ -167,14 +163,19 @@ export function DocumentListSection({
                 className={`${GRID} w-full cursor-pointer border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
               >
                 <DocumentNameCell title={doc.title} documentId={doc.documentId} />
-                <span className="text-muted-foreground">Document</span>
+                <span className="text-muted-foreground">문서</span>
                 <OwnerCell name={doc.updateUser ?? doc.createUser} email={ownerEmail} />
-                <span className="text-right text-muted-foreground">
+                <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {formatUpdated(doc.updateTime)}
                 </span>
                 <span className="flex justify-end">
                   <ItemActionsMenu
-                    target={{ kind: 'document', id: doc.documentId, name: doc.title }}
+                    target={{
+                      kind: 'document',
+                      id: doc.documentId,
+                      name: doc.title,
+                      ownerId: doc.createUser,
+                    }}
                     onChanged={notifyChanged}
                   />
                 </span>

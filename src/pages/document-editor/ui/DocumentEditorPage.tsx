@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { koDateTime } from "@/shared/lib/date/format";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import type { PartialBlock } from "@blocknote/core";
 import { AppShell } from "@/widgets/app-shell";
@@ -23,6 +24,7 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { useDocument } from "@/domains/documents";
 import { useSession } from "@/domains/auth/hooks/use-session";
+import { useWorkspaceRole } from "@/domains/workspaces";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
@@ -30,6 +32,7 @@ import { useDeleteDocument } from "@/features/documents/delete-document/hooks/us
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
 import { useSuggestTags } from "@/features/ai/suggest-tags/hooks/use-suggest-tags";
 import { TagSuggestionDialog } from "@/features/labels/add-label/ui/TagSuggestionDialog";
+import { ShareDialog } from "@/features/sharing/share-resource/ui/ShareDialog";
 import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { ROUTES } from "@/shared/constants/routes";
 
@@ -68,13 +71,7 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return koDateTime(date);
 }
 
 export function DocumentEditorPage() {
@@ -86,6 +83,7 @@ export function DocumentEditorPage() {
   const { data, isLoading, isError } = useDocument(documentId);
   const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
+  const { isAdmin } = useWorkspaceRole();
   const save = useSaveDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
   const summarize = useSummarizeDocument();
@@ -97,6 +95,7 @@ export function DocumentEditorPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   // 복원 시에만 편집기를 리마운트해 되돌린 본문을 반영한다(저장 때마다 리마운트되면 커서가 초기화됨).
   const [restoreSeq, setRestoreSeq] = useState(0);
@@ -170,6 +169,9 @@ export function DocumentEditorPage() {
   }
 
   const ownerName = data.updateUser ?? data.createUser ?? "Unknown";
+  // 삭제는 소유자(생성자) 또는 워크스페이스 관리자만.
+  const canDelete =
+    isAdmin || (!!session?.userId && data.createUser === session.userId);
   const ownerEmail = session?.email ?? null;
 
   // 진입 경로: 목록에서 넘겨준 state 우선, 없으면(새로고침/딥링크) folderId 로 트리에서 역산
@@ -217,9 +219,11 @@ export function DocumentEditorPage() {
           onToggleFavorite={() => setIsFavorite((v) => !v)}
           onSave={handleSave}
           onSummarize={handleSummarize}
+          onShare={() => setShareOpen(true)}
           onHistory={() => setHistoryOpen((v) => !v)}
           isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
+          canDelete={canDelete}
         />
       }
     >
@@ -272,8 +276,9 @@ export function DocumentEditorPage() {
         }}
       />
 
-      {/* AI summary panel */}
+      {/* AI summary panel — 문서가 바뀌면 대화 문맥도 새로 시작하도록 key 로 재마운트 */}
       <AiSummaryPanel
+        key={documentId}
         open={summaryOpen}
         isLoading={save.isPending || summarize.isPending}
         summary={summarize.data}
@@ -288,6 +293,17 @@ export function DocumentEditorPage() {
         documentId={documentId}
         suggestions={suggestTags.data ?? []}
       />
+
+      {/* 공유 — 문서 목록의 공유 기능과 동일(ShareDialog) */}
+      {documentId && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          kind="document"
+          id={documentId}
+          name={title || data?.title || '문서'}
+        />
+      )}
 
       {/* 삭제 확인 */}
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
