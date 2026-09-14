@@ -60,13 +60,17 @@ export interface ListDocumentsParams {
   size?: number;
 }
 
-/** 히스토리 버전이 만들어진 계기. RESTORE 는 복원으로 밀려난 버전. */
+/** 히스토리 항목의 생성 계기(서버 DocumentHistorySource). */
 export type DocumentHistorySource = 'MANUAL' | 'RESTORE';
 
-/** GET /api/documents/{id}/history 목록 항목. 본문(blocks)은 상세에서만 내려온다. */
+/**
+ * GET /api/documents/{id}/history 목록 항목(페이지의 items). 서버 DocumentHistoryDto 와 1:1.
+ * 저장 시점마다 쌓이는 불변 스냅샷이며 직전과 내용이 같으면 생략된다. 본문(blocks)은 상세에서만 내려온다.
+ */
 export interface DocumentHistoryDto {
   historyId: string;
   title: string;
+  /** MANUAL: 저장으로 이전 내용이 밀려남 / RESTORE: 복원으로 직전 내용이 밀려남. */
   source: DocumentHistorySource;
   createUser: string | null;
   createTime: string; // ISO-8601

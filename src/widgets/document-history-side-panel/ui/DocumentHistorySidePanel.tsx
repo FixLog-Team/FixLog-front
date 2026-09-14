@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { koDateTime } from '@/shared/lib/date/format';
 import { History, X, RotateCcw, PenLine, RotateCw } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import {
@@ -12,10 +13,10 @@ import {
   AlertDialogCancel,
 } from '@/shared/ui/alert-dialog';
 import { cn } from '@/shared/lib/utils/index';
+import { useDocumentHistories } from '@/features/documents/restore-document/hooks/use-document-histories';
 import { useDocumentHistory } from '@/features/documents/restore-document/hooks/use-document-history';
-import { useDocumentHistoryVersion } from '@/features/documents/restore-document/hooks/use-document-history-version';
 import { useRestoreDocument } from '@/features/documents/restore-document/hooks/use-restore-document';
-import type { DocumentDto, DocumentHistoryDto } from '@/domains/documents';
+import type { DocumentDto, DocumentHistorySource } from '@/domains/documents';
 
 /** 미리보기에 표시할 최대 줄 수. 패널이 좁아 앞부분만 보여준다. */
 const PREVIEW_MAX_LINES = 12;
@@ -35,7 +36,8 @@ interface DocumentHistorySidePanelProps {
 /**
  * 문서 에디터 우측 "버전 기록" 사이드 패널.
  * (페이지용 목록 위젯 document-history-panel 과는 별개 컴포넌트)
- * 지나간 버전 목록 → 선택 시 본문 미리보기 → 해당 버전으로 복원까지 처리한다.
+ * 서버 히스토리(/api/documents/{id}/history) 목록 → 선택 시 본문 미리보기 → 해당 시점으로 복원까지 처리한다.
+ * 히스토리는 저장 시점의 스냅샷(최신순)이며, 문서 정보로 합성한 "현재 버전" 카드를 맨 위에 보여준다.
  * (버전 비교(diff) UI는 1차 MVP 범위에서 제외)
  */
 export function DocumentHistorySidePanel({
@@ -52,12 +54,12 @@ export function DocumentHistorySidePanel({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Hooks
-  const history = useDocumentHistory(documentId, open);
-  const selectedVersion = useDocumentHistoryVersion(documentId, selectedId);
+  const history = useDocumentHistories(documentId, open);
+  const selectedVersion = useDocumentHistory(documentId, selectedId);
   const restore = useRestoreDocument(documentId);
 
   // Variables
-  const versions = history.data?.items ?? [];
+  const versions = history.data ?? [];
   const previewLines = blocksToLines(selectedVersion.data?.blocks ?? null);
 
   // Functions
@@ -66,7 +68,7 @@ export function DocumentHistorySidePanel({
   };
 
   const handleRestore = () => {
-    if (!selectedId) return;
+    if (selectedId === null) return;
     restore.mutate(selectedId, {
       onSuccess: (restored) => {
         setIsConfirmOpen(false);
@@ -94,7 +96,7 @@ export function DocumentHistorySidePanel({
         </span>
         <button
           onClick={onClose}
-          aria-label="Close panel"
+          aria-label="패널 닫기"
           className="text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="size-4" />
@@ -132,12 +134,13 @@ export function DocumentHistorySidePanel({
             </p>
           ) : versions.length === 0 ? (
             <p className="py-3 text-sm leading-relaxed text-muted-foreground">
-              아직 이전 버전이 없습니다. 문서를 저장하면 저장 직전 내용이 여기에 쌓여요.
+              아직 이전 버전이 없습니다. 문서를 저장하면 그 시점의 내용이 여기에 쌓여요.
             </p>
           ) : (
             <ul className="space-y-1.5">
               {versions.map((version, index) => {
                 const isSelected = version.historyId === selectedId;
+                const displayNo = versions.length - index;
                 const newerTitle = index === 0 ? currentTitle : versions[index - 1].title;
                 const titleChanged = version.title !== newerTitle;
                 return (
@@ -159,6 +162,7 @@ export function DocumentHistorySidePanel({
                           className="text-xs font-medium text-muted-foreground"
                           title={formatAbsoluteTime(version.createTime)}
                         >
+                          <span className="mr-1.5 tabular-nums text-foreground/70">v{displayNo}</span>
                           {formatRelativeTime(version.createTime)}
                         </span>
                         <div className="flex items-center gap-1.5">
@@ -168,7 +172,7 @@ export function DocumentHistorySidePanel({
                               제목 변경
                             </span>
                           )}
-                          <SourceBadge source={version.source} />
+                          <RestoredBadge source={version.source} />
                         </div>
                       </div>
                       {/* 제목 */}
@@ -219,7 +223,7 @@ export function DocumentHistorySidePanel({
       </div>
 
       {/* Restore action */}
-      {selectedId && (
+      {selectedId !== null && (
         <div className="border-t border-border p-4">
           <Button
             className="w-full"
@@ -238,7 +242,7 @@ export function DocumentHistorySidePanel({
           <AlertDialogHeader>
             <AlertDialogTitle>이 버전으로 복원할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              현재 내용은 새로운 버전으로 기록되므로, 복원 후에도 다시 되돌릴 수 있습니다.
+              현재 내용도 히스토리로 남아 있고 복원 결과가 새 버전으로 기록되므로, 복원 후에도 다시 되돌릴 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -305,12 +309,7 @@ function formatRelativeTime(iso: string | null): string {
   if (hours < 24) return `${hours}시간 전`;
   if (days < 7) return `${days}일 전`;
 
-  return date.toLocaleString('ko-KR', {
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return koDateTime(date);
 }
 
 /** 툴팁용 절대 시간. */
@@ -318,24 +317,16 @@ function formatAbsoluteTime(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return koDateTime(date);
 }
 
-/** 히스토리 소스 배지. */
-function SourceBadge({ source }: { source: DocumentHistoryDto['source'] }) {
-  if (source === 'RESTORE') {
-    return (
-      <span className="flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-        <RotateCw className="size-3" />
-        복원 전 백업
-      </span>
-    );
-  }
-  return null;
+/** 복원으로 만들어진 히스토리 배지. source=RESTORE 일 때만 표시한다. */
+function RestoredBadge({ source }: { source: DocumentHistorySource }) {
+  if (source !== 'RESTORE') return null;
+  return (
+    <span className="flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+      <RotateCw className="size-3" />
+      복원됨
+    </span>
+  );
 }

@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { documentsApi } from '@/domains/documents';
 import { QUERY_KEYS } from '@/app/config/query-keys';
 
-/** 문서 버전 히스토리 목록(최신순). 패널이 열렸을 때만 조회한다. */
-export function useDocumentHistory(documentId: string | undefined, enabled: boolean) {
+/** 선택한 히스토리의 상세(본문 포함). 미리보기용이라 선택된 항목이 있을 때만 조회한다. */
+export function useDocumentHistory(documentId: string | undefined, historyId: string | null) {
   return useQuery({
-    queryKey: QUERY_KEYS.documents.history(documentId ?? ''),
-    queryFn: () => documentsApi.listHistory(documentId as string),
-    enabled: !!documentId && enabled,
+    queryKey: QUERY_KEYS.documents.historyDetail(documentId ?? '', historyId ?? ''),
+    queryFn: () => documentsApi.getHistory(documentId as string, historyId as string),
+    enabled: !!documentId && historyId !== null,
   });
 }
