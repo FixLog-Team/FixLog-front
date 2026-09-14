@@ -74,15 +74,15 @@ export function MemberManageDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        {/* 헤더 + 우측 상단 추가/제거 */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+        {/* 헤더 — 제목/설명 줄 아래에 추가/제거 버튼 줄을 두어 우상단 닫기(X) 버튼과 겹치지 않게 한다 */}
+        <div>
+          <div className="min-w-0 pr-8">
             <DialogTitle>멤버 관리</DialogTitle>
             <DialogDescription className="truncate">
               {workspaceName}
             </DialogDescription>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="mt-3 flex items-center justify-end gap-2">
             <Button
               size="sm"
               variant={addMode ? 'default' : 'secondary'}
@@ -167,6 +167,7 @@ export function MemberManageDialog({
                     aria-label={`${m.userName} 역할`}
                     className="h-8 shrink-0 rounded-md border border-border bg-card px-2 text-sm text-foreground outline-none focus:border-primary disabled:opacity-50"
                   >
+                    <option value="OWNER">소유자</option>
                     <option value="ADMIN">관리자</option>
                     <option value="MEMBER">구성원</option>
                   </select>
