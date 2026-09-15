@@ -25,6 +25,15 @@ export const router = createBrowserRouter([
         Component: m.LoginCallbackPage,
       })),
   },
+  // 초대 응답 — 미리보기(GET)는 인증 불필요이므로 비로그인도 접근 가능한 public 라우트.
+  // 수락 시 로그인 상태를 확인해 필요하면 로그인으로 유도한다(가이드 8-1).
+  {
+    path: ROUTES.INVITE,
+    lazy: () =>
+      import('@/pages/invite/ui/InviteResponsePage').then((m) => ({
+        Component: m.InviteResponsePage,
+      })),
+  },
   // 인증 필요 라우트 (RequireAuth 가드 하위)
   {
     element: <RequireAuth />,
@@ -76,13 +85,6 @@ export const router = createBrowserRouter([
         lazy: () =>
           import('@/pages/settings/ui/SettingsPage').then((m) => ({
             Component: m.SettingsPage,
-          })),
-      },
-      {
-        path: ROUTES.INVITE,
-        lazy: () =>
-          import('@/pages/invite/ui/InviteResponsePage').then((m) => ({
-            Component: m.InviteResponsePage,
           })),
       },
       {

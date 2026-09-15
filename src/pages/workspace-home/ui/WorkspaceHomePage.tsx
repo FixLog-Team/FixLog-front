@@ -18,7 +18,7 @@ import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
-import { CURRENT_USER } from '@/domains/user/lib/mock-data/current-user';
+import { useSession } from '@/domains/auth';
 import { DEMO_DOCUMENTS } from '@/domains/documents/lib/mock-data/demo-documents';
 import type { DemoDocument } from '@/domains/documents/lib/mock-data/demo-documents';
 import { documentsApi } from '@/domains/documents/api/documents.api';
@@ -28,6 +28,7 @@ import { CreateFolderDialog } from '@/features/folders/create-folder/ui/CreateFo
 import { useRecentFolders } from '@/domains/folders/hooks/use-recent-folders';
 import type { RecentFolder } from '@/domains/folders/hooks/use-recent-folders';
 import { useDocumentLabels } from '@/domains/labels';
+import { useFlashToast } from '@/shared/lib/ui/use-flash-toast';
 
 const SUGGESTIONS = [
   '페이지네이션 버그 관련 문서 찾기',
@@ -39,7 +40,7 @@ const SUGGESTIONS = [
 const QUICK_ACTIONS = [
   { key: 'new-document', label: '새 문서', icon: FilePlus },
   { key: 'new-folder', label: '새 폴더', icon: FolderPlus },
-  { key: 'import', label: 'Import Documents', icon: Upload },
+  { key: 'import', label: '문서 가져오기', icon: Upload },
 ] as const;
 
 // 최근 문서 표시 개수(가장 최근 수정 순).
@@ -55,8 +56,11 @@ export function WorkspaceHomePage() {
 
   // Hooks
   const navigate = useNavigate();
+  const { data: session } = useSession();
   const createDocument = useCreateDocument();
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  // 초대 수락/거절 등 다른 페이지에서 넘긴 1회성 Toast 를 이 화면에서 띄운다.
+  useFlashToast();
   // 최근 수정 문서: folderId 미지정 목록은 updateTime DESC 이므로 상위 N개가 최신순.
   const recentQuery = useQuery({
     queryKey: ['documents', 'recent'],
@@ -65,7 +69,7 @@ export function WorkspaceHomePage() {
   const recentFoldersQuery = useRecentFolders(RECENT_FOLDER_LIMIT);
 
   // Variables
-  const firstName = CURRENT_USER.name.split(' ')[0];
+  const firstName = (session?.userName ?? '').split(' ')[0];
   const recentDocuments = recentQuery.data?.items ?? [];
   const recentFolders = recentFoldersQuery.data ?? [];
 
@@ -106,7 +110,7 @@ export function WorkspaceHomePage() {
           action={
             <Button size="sm" onClick={handleCreateDocument}>
               <FilePlus />
-              New Document
+              새 문서
             </Button>
           }
         />
@@ -116,10 +120,10 @@ export function WorkspaceHomePage() {
         {/* Greeting + search */}
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            {greeting()}, {firstName}
+            {greeting()}{firstName ? `, ${firstName}님` : ''}
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
-            What are you looking for?
+            무엇을 찾고 계신가요?
           </h1>
         </div>
 
@@ -189,13 +193,13 @@ export function WorkspaceHomePage() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">
-                Recent documents
+                최근 문서
               </h2>
               <button
                 onClick={() => navigate(ROUTES.DOCUMENTS)}
                 className="text-[13px] font-medium text-primary hover:underline"
               >
-                View all
+                전체 보기
               </button>
             </div>
             <div className="space-y-1">
@@ -239,7 +243,7 @@ export function WorkspaceHomePage() {
         {/* Recently updated folders */}
         <section className="mt-8">
           <h2 className="mb-3 text-sm font-semibold text-foreground">
-            Recently updated folders
+            최근 수정한 폴더
           </h2>
           {recentFoldersQuery.isLoading ? (
             <p className="px-2.5 py-2 text-sm text-muted-foreground">
@@ -395,7 +399,7 @@ function formatRelative(dateStr: string | null): string {
 
 function greeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return '좋은 아침이에요';
+  if (hour < 18) return '좋은 오후예요';
+  return '좋은 저녁이에요';
 }
