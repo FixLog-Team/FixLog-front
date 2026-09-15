@@ -44,7 +44,7 @@ export function SearchResults({ items }: SearchResultsProps) {
               onClick={() => navigate(documentDetailPath(ref.documentId))}
               className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
             >
-              Open document
+              문서 열기
               <ArrowUpRight className="size-4" />
             </button>
           </div>
