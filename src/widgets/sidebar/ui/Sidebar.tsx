@@ -14,6 +14,7 @@ import {
   Check,
   Trash2,
   LayoutDashboard,
+  LogOut,
 } from "lucide-react";
 import { ROUTES } from "@/shared/constants/routes";
 import { searchConversationPath } from "@/shared/constants/routes";
@@ -28,12 +29,10 @@ import {
   DropdownMenuSeparator,
 } from "@/shared/ui/dropdown-menu";
 import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
-import { useSession } from "@/domains/auth";
+import { useSession, authApi } from "@/domains/auth";
 import { useConversations } from "@/domains/ai/hooks/use-conversations";
 import { useWorkspaces, workspacesApi } from "@/domains/workspaces";
 import { workspaceStorage } from "@/shared/lib/workspace/workspace-storage";
-import { tokenStorage, decodeUserId } from "@/shared/lib/auth/token-storage";
-import { DEV_ACCOUNTS } from "@/shared/lib/auth/dev-accounts";
 import { NameInputDialog } from "@/shared/ui/name-input-dialog";
 import { getApiErrorMessage } from "@/shared/lib/http/error-message";
 import { CreateFolderDialog } from "@/features/folders/create-folder/ui/CreateFolderDialog";
@@ -129,15 +128,11 @@ export function Sidebar() {
     }
   };
 
-  // ⚠️ 임시(테스트용): 권한별 계정 전환. 토큰 교체 후, 그 계정이 마지막으로 보던 워크스페이스로 복원한다.
-  const switchAccount = (token: string) => {
-    tokenStorage.save(token, token);
-    // 새 계정의 마지막 워크스페이스로 복원(없으면 개인 워크스페이스). 이전 계정 선택이 새 계정으로 새지 않게 한다.
-    const nextUserId = decodeUserId(token);
-    const last = nextUserId ? workspaceStorage.getLastForUser(nextUserId) : null;
-    if (last) workspaceStorage.set(last);
-    else workspaceStorage.clear();
-    window.location.href = ROUTES.WORKSPACE;
+  // 로그아웃: 클라이언트 토큰·워크스페이스 선택을 지우고 로그인 화면으로(하드 리로드로 전체 상태 초기화).
+  const handleLogout = () => {
+    authApi.logout();
+    workspaceStorage.clear();
+    window.location.href = ROUTES.LOGIN;
   };
 
   // Render
@@ -290,7 +285,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* User profile — ⚠️ 임시(테스트용) 권한별 계정 전환 */}
+      {/* User profile — 계정 메뉴(로그아웃) */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex w-full items-center gap-2.5 border-t border-sidebar-border px-4 py-3 text-left transition-colors hover:bg-muted">
@@ -303,34 +298,16 @@ export function Sidebar() {
                 {session?.email ?? ""}
               </span>
             </span>
-            <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="top" className="w-60">
-          <span className="block px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            테스트 계정 전환
-          </span>
-          {DEV_ACCOUNTS.map((acc) => (
-            <DropdownMenuItem
-              key={acc.key}
-              onSelect={() => switchAccount(acc.token)}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-foreground">
-                  {acc.name}
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    {acc.role}
-                  </span>
-                </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {acc.email}
-                </span>
-              </span>
-              {session?.email === acc.email && (
-                <Check className="size-4 shrink-0 text-primary" />
-              )}
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={handleLogout}
+          >
+            <LogOut />
+            로그아웃
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       {/* 팝업들 */}
