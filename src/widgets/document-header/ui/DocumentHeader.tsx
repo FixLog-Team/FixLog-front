@@ -6,9 +6,9 @@ import {
   History,
   Star,
   Share2,
+  Download,
   Sparkles,
   Trash2,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils/index';
@@ -29,9 +29,11 @@ interface DocumentHeaderProps {
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
   onShare?: () => void;
+  /** 문서 PDF 다운로드(GET /api/documents/{id}/download). */
+  onDownload?: () => void;
+  isDownloading?: boolean;
   onSave?: () => void;
   isSaving?: boolean;
-  isSaved?: boolean;
   onSummarize?: () => void;
   onHistory?: () => void;
   isHistoryOpen?: boolean;
@@ -48,9 +50,10 @@ export function DocumentHeader({
   isFavorite = false,
   onToggleFavorite,
   onShare,
+  onDownload,
+  isDownloading = false,
   onSave,
   isSaving = false,
-  isSaved = false,
   onSummarize,
   onHistory,
   isHistoryOpen = false,
@@ -96,12 +99,16 @@ export function DocumentHeader({
             <Share2 />
             공유
           </Button>
-          {isSaved && !isSaving && (
-            <span className="flex items-center gap-1 text-sm text-primary">
-              <Check className="size-4" />
-              저장됨
-            </span>
-          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onDownload}
+            disabled={isDownloading}
+            title="PDF로 다운로드"
+          >
+            <Download />
+            {isDownloading ? '다운로드 중…' : '다운로드'}
+          </Button>
           <Button
             variant="secondary"
             size="sm"

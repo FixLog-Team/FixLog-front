@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Pencil, Copy, FolderInput, Share2, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Copy, FolderInput, Share2, Download, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,6 +31,7 @@ import { useRenameDocument } from '@/features/documents/rename-document/hooks/us
 import { useDuplicateDocument } from '@/features/documents/duplicate-document/hooks/use-duplicate-document';
 import { useMoveDocument } from '@/features/documents/move-document/hooks/use-move-document';
 import { useDeleteDocument } from '@/features/documents/delete-document/hooks/use-delete-document';
+import { useDownloadDocument } from '@/features/documents/download-document/hooks/use-download-document';
 import { useRenameFolder } from '@/features/folders/rename-folder/hooks/use-rename-folder';
 import { useMoveFolder } from '@/features/folders/move-folder/hooks/use-move-folder';
 import { useDeleteFolder } from '@/features/folders/delete-folder/hooks/use-delete-folder';
@@ -71,6 +72,7 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
   const moveFolder = useMoveFolder();
   const deleteDocument = useDeleteDocument();
   const deleteFolder = useDeleteFolder();
+  const downloadDocument = useDownloadDocument();
 
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -124,6 +126,17 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
       close();
     } catch (error) {
       console.error('move failed:', error);
+    }
+  };
+
+  // 문서 PDF 다운로드(GET /api/documents/{id}/download). 편집 페이지와 동일 동작.
+  const handleDownload = async () => {
+    if (target.kind !== 'document') return;
+    try {
+      await downloadDocument.mutateAsync({ documentId: target.id, title: target.name });
+    } catch (error) {
+      console.error('download failed:', error);
+      alert('다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
 
@@ -181,6 +194,15 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
             <DropdownMenuItem onSelect={() => setShareOpen(true)}>
               <Share2 />
               공유하기
+            </DropdownMenuItem>
+          )}
+          {!isFolder && (
+            <DropdownMenuItem
+              onSelect={handleDownload}
+              disabled={downloadDocument.isPending}
+            >
+              <Download />
+              {downloadDocument.isPending ? '다운로드 중…' : '다운로드'}
             </DropdownMenuItem>
           )}
           {canOwnerAction && <DropdownMenuSeparator />}
