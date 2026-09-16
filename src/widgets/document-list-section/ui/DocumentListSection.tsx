@@ -15,7 +15,7 @@ import { Badge } from '@/shared/ui/badge';
 import { ROUTES } from '@/shared/constants/routes';
 import { ItemActionsMenu } from '@/widgets/item-actions';
 import { useDocumentLabels } from '@/domains/labels';
-import { useSession } from '@/domains/auth/hooks/use-session';
+import { useOwnerName } from '@/domains/workspaces';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 
@@ -57,8 +57,7 @@ export function DocumentListSection({
   onDocumentClick,
   onChanged,
 }: DocumentListSectionProps) {
-  const { data: session } = useSession();
-  const ownerEmail = session?.email ?? null;
+  const resolveOwner = useOwnerName();
   const isEmpty = folders.length === 0 && documents.length === 0;
   const notifyChanged = () => onChanged?.();
 
@@ -134,7 +133,7 @@ export function DocumentListSection({
                   </span>
                 </span>
                 <span className="text-muted-foreground">폴더</span>
-                <OwnerCell name={folder.updateUser ?? folder.createUser} email={ownerEmail} />
+                <OwnerCell name={resolveOwner(folder.createUser)} />
                 <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {formatUpdated(folder.updateTime)}
                 </span>
@@ -164,7 +163,7 @@ export function DocumentListSection({
               >
                 <DocumentNameCell title={doc.title} documentId={doc.documentId} />
                 <span className="text-muted-foreground">문서</span>
-                <OwnerCell name={doc.updateUser ?? doc.createUser} email={ownerEmail} />
+                <OwnerCell name={resolveOwner(doc.createUser)} />
                 <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {formatUpdated(doc.updateTime)}
                 </span>
@@ -217,14 +216,13 @@ function DocumentNameCell({
   );
 }
 
-/** 소유자 셀. 이메일 우선, 없으면 이름, 둘 다 없으면 '—'. */
-function OwnerCell({ name, email }: { name: string | null; email: string | null }) {
-  const display = email ?? name;
-  if (!display) return <span className="text-muted-foreground">—</span>;
+/** 소유자 셀. 리졸버로 변환된 소유자 이름을 표시한다(미확인 시 '—'). */
+function OwnerCell({ name }: { name: string }) {
+  if (!name || name === '—') return <span className="text-muted-foreground">—</span>;
   return (
     <span className="flex items-center gap-2 text-foreground">
-      <Avatar name={name ?? display} size="sm" />
-      <span className="truncate">{display}</span>
+      <Avatar name={name} size="sm" />
+      <span className="truncate">{name}</span>
     </span>
   );
 }

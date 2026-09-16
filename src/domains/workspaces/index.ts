@@ -14,6 +14,7 @@ export {
   useChangeMemberRole,
   useRemoveMember,
 } from '@/domains/workspaces/hooks/use-workspace-members';
+export { useOwnerName } from '@/domains/workspaces/hooks/use-owner-name';
 export { useWorkspaceRole } from '@/domains/workspaces/hooks/use-workspace-role';
 export type {
   Workspace,
