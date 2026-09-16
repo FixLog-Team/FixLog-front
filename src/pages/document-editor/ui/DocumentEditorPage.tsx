@@ -24,16 +24,18 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { useDocument } from "@/domains/documents";
 import { useSession } from "@/domains/auth/hooks/use-session";
-import { useWorkspaceRole } from "@/domains/workspaces";
+import { useWorkspaceRole, useOwnerName } from "@/domains/workspaces";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
 import { useDeleteDocument } from "@/features/documents/delete-document/hooks/use-delete-document";
+import { useDownloadDocument } from "@/features/documents/download-document/hooks/use-download-document";
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
 import { useSuggestTags } from "@/features/ai/suggest-tags/hooks/use-suggest-tags";
 import { TagSuggestionDialog } from "@/features/labels/add-label/ui/TagSuggestionDialog";
 import { ShareDialog } from "@/features/sharing/share-resource/ui/ShareDialog";
 import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
+import { toast } from "@/shared/ui/toast";
 import { ROUTES } from "@/shared/constants/routes";
 import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
 
@@ -85,8 +87,10 @@ export function DocumentEditorPage() {
   const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
   const { isAdmin } = useWorkspaceRole();
+  const resolveOwner = useOwnerName();
   const save = useSaveDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
+  const downloadDocument = useDownloadDocument();
   const summarize = useSummarizeDocument();
   const suggestTags = useSuggestTags();
 
@@ -100,51 +104,75 @@ export function DocumentEditorPage() {
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   // 복원 시에만 편집기를 리마운트해 되돌린 본문을 반영한다(저장 때마다 리마운트되면 커서가 초기화됨).
   const [restoreSeq, setRestoreSeq] = useState(0);
+  // Ctrl/Cmd+S 콜백이 stale 클로저 없이 최신 저장을 호출하도록 ref 로 보관.
+  const saveNowRef = useRef<() => void>(() => {});
 
   // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
   useEffect(() => {
     if (data) setTitle(data.title);
   }, [documentId, data?.title]);
 
+  // Ctrl/Cmd + S 로 저장(브라우저 기본 저장 팝업 방지).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveNowRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // Functions
-  const handleSave = () => {
+  // 현재 편집 내용을 저장(완료까지 await). 성공 여부를 반환하고, showToast=true 면 성공 토스트.
+  const persist = async (showToast = false): Promise<boolean> => {
     const blocks = editorRef.current?.getBlocks();
-    if (!blocks || !data) return;
-    save.mutate(
-      { title: title.trim() || "Untitled", blocks },
-      {
-        onError: (error) => {
-          console.error("Failed to save document:", error);
-          alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
-        },
-      },
-    );
+    if (!blocks || !data) return true; // 저장할 내용이 없으면 통과
+    try {
+      await save.mutateAsync({ title: title.trim() || "Untitled", blocks });
+      if (showToast) toast.success("문서를 저장했어요.");
+      return true;
+    } catch (error) {
+      console.error("Failed to save document:", error);
+      return false;
+    }
+  };
+
+  const handleSave = async () => {
+    const ok = await persist(true);
+    if (!ok) alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+  };
+  // Ctrl/Cmd+S 콜백이 최신 handleSave 를 호출하도록 매 렌더 갱신.
+  saveNowRef.current = handleSave;
+
+  // 공유: 최신 내용을 먼저 저장한 뒤 공유 대화상자를 연다.
+  const handleShare = async () => {
+    await persist();
+    setShareOpen(true);
   };
 
   const handleSummarize = async () => {
-    const blocks = editorRef.current?.getBlocks();
-    if (!blocks || !documentId) return;
+    if (!documentId) return;
     setSummaryOpen(true);
     summarize.reset();
     suggestTags.reset();
-    const content = blocksToPlainText(blocks);
-    try {
-      // 서버가 DB 원문을 요약하므로 최신 본문 저장을 먼저 수행한다.
-      await save.mutateAsync({ title: title.trim() || "Untitled", blocks });
-      // 요약(패널)과 태그 제안(팝업)을 독립적으로 진행 — 한쪽 실패가 다른 쪽을 막지 않는다.
-      summarize.mutateAsync(documentId).catch((error) => {
-        console.error("AI summarize failed:", error);
-      });
-      if (content) {
-        try {
-          const tags = await suggestTags.mutateAsync(content);
-          if (tags.length > 0) setTagDialogOpen(true);
-        } catch (error) {
-          console.error("AI tag suggestion failed:", error);
-        }
+    // 서버가 DB 원문을 요약하므로 최신 본문 저장을 먼저 완료한다.
+    const ok = await persist();
+    if (!ok) return;
+    const blocks = editorRef.current?.getBlocks();
+    const content = blocks ? blocksToPlainText(blocks) : "";
+    // 요약(패널)과 태그 제안(팝업)을 독립적으로 진행 — 한쪽 실패가 다른 쪽을 막지 않는다.
+    summarize.mutateAsync(documentId).catch((error) => {
+      console.error("AI summarize failed:", error);
+    });
+    if (content) {
+      try {
+        const tags = await suggestTags.mutateAsync(content);
+        if (tags.length > 0) setTagDialogOpen(true);
+      } catch (error) {
+        console.error("AI tag suggestion failed:", error);
       }
-    } catch (error) {
-      console.error("Failed to save before summarize:", error);
     }
   };
 
@@ -173,11 +201,11 @@ export function DocumentEditorPage() {
     );
   }
 
-  const ownerName = data.updateUser ?? data.createUser ?? "Unknown";
+  // 소유자는 생성자(createUser). userId 를 구성원 목록으로 실제 이름으로 변환한다.
+  const ownerName = resolveOwner(data.createUser);
   // 삭제는 소유자(생성자) 또는 워크스페이스 관리자만.
   const canDelete =
     isAdmin || (!!session?.userId && data.createUser === session.userId);
-  const ownerEmail = session?.email ?? null;
 
   // 진입 경로: 목록에서 넘겨준 state 우선, 없으면(새로고침/딥링크) folderId 로 트리에서 역산
   const statePath = (location.state as { folderPath?: FolderPathItem[] } | null)
@@ -202,6 +230,24 @@ export function DocumentEditorPage() {
     }
   };
 
+  // 문서 PDF 다운로드(GET /api/documents/{id}/download). 최신 내용을 먼저 저장한 뒤 다운로드.
+  const handleDownload = async () => {
+    const ok = await persist();
+    if (!ok) {
+      alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    try {
+      await downloadDocument.mutateAsync({
+        documentId,
+        title: title.trim() || data.title,
+      });
+    } catch (error) {
+      console.error("Failed to download document:", error);
+      alert("다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    }
+  };
+
   const breadcrumb = [
     { label: "My Documents", onClick: () => goToFolder([]) },
     ...folderPath.map((item, index) => ({
@@ -220,11 +266,12 @@ export function DocumentEditorPage() {
           breadcrumb={breadcrumb}
           isFavorite={isFavorite}
           isSaving={save.isPending}
-          isSaved={save.isSuccess}
           onToggleFavorite={() => setIsFavorite((v) => !v)}
           onSave={handleSave}
           onSummarize={handleSummarize}
-          onShare={() => setShareOpen(true)}
+          onShare={handleShare}
+          onDownload={handleDownload}
+          isDownloading={downloadDocument.isPending}
           onHistory={() => setHistoryOpen((v) => !v)}
           isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
@@ -247,7 +294,7 @@ export function DocumentEditorPage() {
             <span className="flex items-center gap-2">
               <Avatar name={ownerName} size="sm" />
               <span className="text-foreground">
-                {ownerEmail ?? ownerName}
+                {ownerName}
               </span>
             </span>
             {data.updateTime && (
@@ -272,7 +319,7 @@ export function DocumentEditorPage() {
         open={historyOpen}
         documentId={documentId}
         currentTitle={data.title}
-        currentUser={ownerEmail ?? ownerName}
+        currentUser={ownerName}
         currentUpdateTime={data.updateTime}
         onClose={() => setHistoryOpen(false)}
         onRestored={(restored) => {
