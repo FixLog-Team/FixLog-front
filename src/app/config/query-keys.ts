@@ -25,4 +25,7 @@ export const QUERY_KEYS = {
   search: {
     results: (query: string) => ['search', query] as const,
   },
+  invitations: {
+    preview: (token: string) => ['invitations', token] as const,
+  },
 } as const;

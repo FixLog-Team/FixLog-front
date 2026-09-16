@@ -73,11 +73,11 @@ export function DocumentListSection({
         />
         <Button variant="secondary" className="h-11">
           <SlidersHorizontal />
-          Filter
+          필터
         </Button>
         <Button variant="secondary" className="h-11">
           <ArrowUpDown />
-          Sort
+          정렬
         </Button>
       </div>
 
@@ -85,14 +85,14 @@ export function DocumentListSection({
       <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm">
         <Sparkles className="size-4 shrink-0 text-primary" />
         <span className="text-foreground">
-          Not sure where a document lives?{' '}
+          문서 위치를 모르시겠나요?{' '}
           <Link
             to={ROUTES.SEARCH}
             className="font-medium text-primary hover:underline"
           >
-            Use AI Search
+            AI 검색
           </Link>{' '}
-          to find it by meaning.
+          으로 의미 기반으로 찾아보세요.
         </span>
       </div>
 
@@ -110,7 +110,7 @@ export function DocumentListSection({
 
         {isLoading ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading…
+            불러오는 중…
           </p>
         ) : isEmpty ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">

@@ -8,10 +8,13 @@ import {
 } from '@/shared/ui/card';
 import { LOGIN_PAGE_TEXT } from '@/pages/login/constants';
 import { useGoogleLogin } from '@/features/auth/login/hooks/use-google-login';
+import { useFlashToast } from '@/shared/lib/ui/use-flash-toast';
 
 export function LoginPage() {
   // 로그인 성공 시 서버가 /login/callback 으로 리다이렉트하므로 이 페이지의 콜백은 없다.
   const { startGoogleLogin, isLoading } = useGoogleLogin();
+  // 초대 수락을 위해 로그인이 필요해 넘어온 경우 등, 다른 화면에서 넘긴 안내 Toast 를 띄운다.
+  useFlashToast();
 
   const handleGoogleLogin = () => {
     startGoogleLogin();

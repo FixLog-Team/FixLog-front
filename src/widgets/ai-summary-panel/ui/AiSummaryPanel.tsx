@@ -61,7 +61,7 @@ export function AiSummaryPanel({
       <div className="flex items-center justify-between px-5 py-4">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Sparkles className="size-4 text-primary" />
-          Document AI
+          문서 AI
         </span>
         <button
           onClick={onClose}
@@ -76,13 +76,13 @@ export function AiSummaryPanel({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {/* Summary */}
         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Summary
+          요약
         </div>
 
         {isLoading ? (
           <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
             <span className="inline-block size-4 animate-spin rounded-full border-2 border-border border-t-primary" />
-            <span>Summarizing…</span>
+            <span>요약하는 중…</span>
           </div>
         ) : isError ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -100,7 +100,7 @@ export function AiSummaryPanel({
         {hasChat && (
           <div className="mt-6 border-t border-border pt-4">
             <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Ask AI
+              AI에게 질문
             </div>
             <div className="space-y-5">
               {chat.turns.map((turn) => {

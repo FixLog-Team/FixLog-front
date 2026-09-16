@@ -10,6 +10,7 @@ import {
 import { Logo } from "@/shared/ui/logo";
 import { Button } from "@/shared/ui/button";
 import { ROUTES } from "@/shared/constants/routes";
+import { useFlashToast } from "@/shared/lib/ui/use-flash-toast";
 
 const NAV_LINKS = ["제품", "작동 방식", "보안"];
 
@@ -41,6 +42,9 @@ const FEATURES = [
 ];
 
 export function LandingPage() {
+  // 로그아웃 상태에서 초대를 수락/거절했을 때 이 화면(최초 진입 페이지)에서 결과 Toast 를 띄운다.
+  useFlashToast();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}

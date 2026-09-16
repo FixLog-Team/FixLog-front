@@ -153,7 +153,7 @@ export function DocumentEditorPage() {
     return (
       <AppShell>
         <div className="flex h-full items-center justify-center">
-          <p className="text-muted-foreground">Loading document…</p>
+          <p className="text-muted-foreground">문서를 불러오는 중…</p>
         </div>
       </AppShell>
     );
