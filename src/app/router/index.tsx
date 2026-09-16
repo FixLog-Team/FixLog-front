@@ -44,6 +44,13 @@ export const router = createBrowserRouter([
           })),
       },
       {
+        path: ROUTES.TRASH,
+        lazy: () =>
+          import('@/pages/trash/ui/TrashPage').then((m) => ({
+            Component: m.TrashPage,
+          })),
+      },
+      {
         path: ROUTES.DOCUMENT_EDITOR,
         lazy: () =>
           import('@/pages/document-editor/ui/DocumentEditorPage').then((m) => ({
@@ -69,6 +76,20 @@ export const router = createBrowserRouter([
         lazy: () =>
           import('@/pages/settings/ui/SettingsPage').then((m) => ({
             Component: m.SettingsPage,
+          })),
+      },
+      {
+        path: ROUTES.INVITE,
+        lazy: () =>
+          import('@/pages/invite/ui/InviteResponsePage').then((m) => ({
+            Component: m.InviteResponsePage,
+          })),
+      },
+      {
+        path: `${ROUTES.ADMIN}/*`,
+        lazy: () =>
+          import('@/pages/fixlog-admin/ui/FixLogAdminPage').then((m) => ({
+            Component: m.FixLogAdminPage,
           })),
       },
     ],

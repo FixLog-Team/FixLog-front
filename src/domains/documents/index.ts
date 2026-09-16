@@ -4,6 +4,7 @@ export type {
   DocumentDuplicateDto,
   DocumentHistoryDto,
   DocumentHistoryDetailDto,
+  DocumentHistorySource,
   CreateDocumentBody,
   SaveDocumentBody,
   MoveDocumentBody,

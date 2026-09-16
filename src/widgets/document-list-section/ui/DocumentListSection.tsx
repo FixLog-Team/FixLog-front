@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { koDateTime } from '@/shared/lib/date/format';
 import {
   Search,
   SlidersHorizontal,
@@ -10,8 +11,10 @@ import {
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
+import { Badge } from '@/shared/ui/badge';
 import { ROUTES } from '@/shared/constants/routes';
 import { ItemActionsMenu } from '@/widgets/item-actions';
+import { useDocumentLabels } from '@/domains/labels';
 import { useSession } from '@/domains/auth/hooks/use-session';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
@@ -33,13 +36,7 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return koDateTime(date);
 }
 
 /** Enter/Space 로 행을 여는 키보드 핸들러(행이 div[role=button] 라 필요). */
@@ -72,7 +69,7 @@ export function DocumentListSection({
         <Input
           className="h-11 flex-1"
           icon={<Search />}
-          placeholder="Search this workspace..."
+          placeholder="이 워크스페이스에서 검색..."
         />
         <Button variant="secondary" className="h-11">
           <SlidersHorizontal />
@@ -104,10 +101,10 @@ export function DocumentListSection({
         <div
           className={`${GRID} border-b border-border px-4 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground`}
         >
-          <span>Name</span>
-          <span>Type</span>
-          <span>Owner</span>
-          <span className="text-right">Last updated</span>
+          <span>이름</span>
+          <span>유형</span>
+          <span>소유자</span>
+          <span className="text-right">수정일</span>
           <span />
         </div>
 
@@ -136,9 +133,9 @@ export function DocumentListSection({
                     {folder.folderName}
                   </span>
                 </span>
-                <span className="text-muted-foreground">Folder</span>
+                <span className="text-muted-foreground">폴더</span>
                 <OwnerCell name={folder.updateUser ?? folder.createUser} email={ownerEmail} />
-                <span className="text-right text-muted-foreground">
+                <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {formatUpdated(folder.updateTime)}
                 </span>
                 <span className="flex justify-end">
@@ -148,6 +145,7 @@ export function DocumentListSection({
                       id: folder.folderId,
                       name: folder.folderName,
                       parentId: folder.parentId,
+                      ownerId: folder.createUser,
                     }}
                     onChanged={notifyChanged}
                   />
@@ -164,20 +162,20 @@ export function DocumentListSection({
                 onKeyDown={rowKeyHandler(() => onDocumentClick?.(doc))}
                 className={`${GRID} w-full cursor-pointer border-b border-border px-4 py-3 text-left text-sm transition-colors hover:bg-card`}
               >
-                <span className="flex min-w-0 items-center gap-3">
-                  <FileText className="size-[18px] shrink-0 text-muted-foreground" />
-                  <span className="truncate font-medium text-foreground">
-                    {doc.title}
-                  </span>
-                </span>
-                <span className="text-muted-foreground">Document</span>
+                <DocumentNameCell title={doc.title} documentId={doc.documentId} />
+                <span className="text-muted-foreground">문서</span>
                 <OwnerCell name={doc.updateUser ?? doc.createUser} email={ownerEmail} />
-                <span className="text-right text-muted-foreground">
+                <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
                   {formatUpdated(doc.updateTime)}
                 </span>
                 <span className="flex justify-end">
                   <ItemActionsMenu
-                    target={{ kind: 'document', id: doc.documentId, name: doc.title }}
+                    target={{
+                      kind: 'document',
+                      id: doc.documentId,
+                      name: doc.title,
+                      ownerId: doc.createUser,
+                    }}
                     onChanged={notifyChanged}
                   />
                 </span>
@@ -187,6 +185,35 @@ export function DocumentListSection({
         )}
       </div>
     </div>
+  );
+}
+
+/** 문서 이름 셀. 제목 아래에 라벨 pill 을 보여준다. 라벨이 없으면 라벨 영역을 렌더하지 않는다. */
+function DocumentNameCell({
+  title,
+  documentId,
+}: {
+  title: string;
+  documentId: string;
+}) {
+  const { data } = useDocumentLabels(documentId);
+  const labels = data ?? [];
+  return (
+    <span className="flex min-w-0 items-start gap-3">
+      <FileText className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="truncate font-medium text-foreground">{title}</span>
+        {labels.length > 0 && (
+          <span className="flex flex-wrap gap-1">
+            {labels.map((label) => (
+              <Badge key={label.labelId} variant="tag">
+                {label.labelName}
+              </Badge>
+            ))}
+          </span>
+        )}
+      </span>
+    </span>
   );
 }
 

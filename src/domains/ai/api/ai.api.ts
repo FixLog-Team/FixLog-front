@@ -35,6 +35,18 @@ export const aiApi = {
   },
 
   /**
+   * 태그 자동 생성(제안). content(원문 텍스트, 최대 50,000자)를 body 로 보내고
+   * 추천 태그 문자열 배열을 받는다. 서버는 제안을 저장하지 않으므로(수락 전 상태 없음),
+   * 사용자가 고른 것만 라벨 API 로 문서에 붙인다. (FRONTEND_API_GUIDE 6장·12장)
+   */
+  async generateTags(content: string): Promise<string[]> {
+    const res = await http.post<ApiResponse<string[]>>('/ai/tags', {
+      content: content.slice(0, 50000),
+    });
+    return unwrap(res);
+  },
+
+  /**
    * 질문 기반 AI 답변 생성(RAG). 본인 소유 문서 중 질문과 유사한 문서를 검색해
    * 그 내용을 근거로 답변을 생성하고 참고 문서(references)를 함께 반환한다.
    */

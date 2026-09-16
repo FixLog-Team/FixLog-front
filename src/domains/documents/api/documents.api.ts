@@ -35,7 +35,7 @@ import type {
  *   GET    /api/documents/{id}/save-state        → getSaveState
  *   GET    /api/documents/{id}/download          → downloadPdf (application/pdf)
  *   GET    /api/documents/{id}/history           → listHistory
- *   GET    /api/documents/{id}/history/{hid}     → getHistoryVersion
+ *   GET    /api/documents/{id}/history/{hid}     → getHistory
  *   POST   /api/documents/{id}/history/{hid}/restore → restoreHistory
  */
 const PATH = '/api/documents';
@@ -146,25 +146,21 @@ export const documentsApi = {
   },
 
   /**
-   * 문서 버전 히스토리 목록(최신순). 현재 본문은 포함되지 않고 지나간 버전만 반환된다.
-   * 서버가 문서당 보존 개수를 제한하므로(기본 50) 한 번에 받아 페이지네이션 없이 표시한다.
+   * 문서 히스토리 목록(최신순, 배열). 저장 시점마다 쌓인 스냅샷이며 최신 항목은 보통 현재 내용과 같다.
+   * 서버가 페이지네이션 없이 전체를 내려준다.
    */
-  async listHistory(
-    documentId: string,
-    { page = 0, size = 50 }: { page?: number; size?: number } = {}
-  ): Promise<PageResponse<DocumentHistoryDto>> {
+  async listHistory(documentId: string): Promise<DocumentHistoryDto[]> {
+    // 서버는 페이지네이션(items/page/size...)으로 내려주지만, 사이드 패널은 전체 목록을
+    // 한 번에 최신순으로 보여주므로 넉넉한 size 로 첫 페이지만 받아 items 를 반환한다.
     const res = await http.get<ApiResponse<PageResponse<DocumentHistoryDto>>>(
       `${PATH}/${documentId}/history`,
-      { params: { page, size } }
+      { params: { page: 0, size: 100 } }
     );
-    return unwrap(res);
+    return unwrap(res).items;
   },
 
-  /** 특정 버전 상세(본문 포함). 서버 Editor.js blocks 를 BlockNote 로 변환해 반환. */
-  async getHistoryVersion(
-    documentId: string,
-    historyId: string
-  ): Promise<DocumentHistoryDetailDto> {
+  /** 특정 히스토리 상세(본문 포함). 서버 Editor.js blocks 를 BlockNote 로 변환해 반환. */
+  async getHistory(documentId: string, historyId: string): Promise<DocumentHistoryDetailDto> {
     const res = await http.get<ApiResponse<DocumentHistoryDetailDto>>(
       `${PATH}/${documentId}/history/${historyId}`
     );
@@ -183,8 +179,8 @@ export const documentsApi = {
   },
 
   /**
-   * 특정 버전으로 문서를 되돌린다. 복원 직전 내용도 서버가 히스토리에 남기므로
-   * 잘못 복원해도 다시 되돌릴 수 있다. 복원된 문서 전체를 반환한다.
+   * 특정 히스토리의 내용으로 문서를 되돌린다. 복원 결과도 서버가 새 히스토리(source=RESTORE) 항목으로
+   * 남기고 기존 항목은 지우지 않으므로, 잘못 복원해도 다시 되돌릴 수 있다. 복원된 문서 전체를 반환한다.
    */
   async restoreHistory(documentId: string, historyId: string): Promise<DocumentDto> {
     const res = await http.post<ApiResponse<DocumentDto>>(

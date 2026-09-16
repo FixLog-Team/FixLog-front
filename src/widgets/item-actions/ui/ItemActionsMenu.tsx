@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Pencil, Copy, FolderInput, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Copy, FolderInput, Share2, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,6 +36,9 @@ import { useMoveFolder } from '@/features/folders/move-folder/hooks/use-move-fol
 import { useDeleteFolder } from '@/features/folders/delete-folder/hooks/use-delete-folder';
 import { MoveDialog } from '@/widgets/item-actions/ui/MoveDialog';
 import type { ActionTarget } from '@/widgets/item-actions/ui/types';
+import { ShareDialog } from '@/features/sharing/share-resource/ui/ShareDialog';
+import { useSession } from '@/domains/auth';
+import { useWorkspaceRole } from '@/domains/workspaces';
 
 interface ItemActionsMenuProps {
   target: ActionTarget;
@@ -52,6 +55,14 @@ type OpenDialog = 'rename' | 'move' | 'delete' | null;
 export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
   const isFolder = target.kind === 'folder';
 
+  // 역할 기반 게이팅: 공유/삭제는 소유자 전용(OWNER) 액션이므로,
+  // 내가 소유자(생성자)이거나 워크스페이스 관리자일 때만 노출한다.
+  // (이름변경/복제/이동은 편집 권한만 있으면 되므로 노출하고 서버 판정에 맡긴다.)
+  const { data: session } = useSession();
+  const { isAdmin } = useWorkspaceRole();
+  const isOwner = !!target.ownerId && target.ownerId === session?.userId;
+  const canOwnerAction = isAdmin || isOwner;
+
   // 훅은 조건 없이 항상 호출한다. 문서가 아닐 땐 rename 훅에 빈 id 를 넘기며 사용하지 않는다.
   const renameDocument = useRenameDocument(target.kind === 'document' ? target.id : '');
   const renameFolder = useRenameFolder();
@@ -62,6 +73,7 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
   const deleteFolder = useDeleteFolder();
 
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(target.name);
 
   const close = () => setOpenDialog(null);
@@ -165,11 +177,22 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
             <FolderInput />
             이동
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={() => setOpenDialog('delete')}>
-            <Trash2 />
-            삭제
-          </DropdownMenuItem>
+          {canOwnerAction && (
+            <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+              <Share2 />
+              공유하기
+            </DropdownMenuItem>
+          )}
+          {canOwnerAction && <DropdownMenuSeparator />}
+          {canOwnerAction && (
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => setOpenDialog('delete')}
+            >
+              <Trash2 />
+              삭제
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -205,6 +228,15 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
         open={openDialog === 'move'}
         onOpenChange={(o) => !o && close()}
         onSelect={handleMove}
+      />
+
+      {/* 공유 */}
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        kind={target.kind}
+        id={target.id}
+        name={target.name}
       />
 
       {/* 삭제 확인 */}

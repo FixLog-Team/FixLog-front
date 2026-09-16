@@ -7,7 +7,7 @@ import { foldersApi } from '@/domains/folders';
 import type { FolderItem, FolderPathItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
-import { useCreateFolder } from '@/features/folders/create-folder/hooks/use-create-folder';
+import { CreateFolderDialog } from '@/features/folders/create-folder/ui/CreateFolderDialog';
 import { documentDetailPath } from '@/shared/constants/routes';
 
 export function DocumentListPage() {
@@ -15,9 +15,9 @@ export function DocumentListPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const createDocument = useCreateDocument();
-  const createFolder = useCreateFolder();
 
   // State
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [documents, setDocuments] = useState<DocumentDto[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<FolderPathItem[]>([]);
@@ -85,20 +85,13 @@ export function DocumentListPage() {
     }
   };
 
-  const handleCreateFolder = async () => {
-    const folderName = window.prompt('폴더 이름을 입력하세요', 'New Folder');
-    if (!folderName) return;
-    try {
-      await createFolder.mutateAsync({ parentId: currentFolderId, folderName });
-      loadContents(currentFolderId);
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
-  };
+  // 헤더의 New Folder 버튼: 팝업을 열고, 생성 성공 시 현재 폴더 내용을 다시 불러온다.
+  const handleCreateFolder = () => setCreateFolderOpen(true);
 
   // Effects
   useEffect(() => {
-    // 에디터 breadcrumb 등에서 넘어온 폴더 경로가 있으면 그 폴더로 복원한다.
+    // location.key: 새 내비게이션마다 재실행(사이드바에서 /documents 로 재진입하는 경우 포함).
+    // 에디터 breadcrumb·사이드바 폴더 클릭 등에서 넘어온 폴더 경로가 있으면 그 폴더로 복원한다.
     const incoming = (
       location.state as { folderPath?: FolderPathItem[] } | null
     )?.folderPath;
@@ -109,8 +102,8 @@ export function DocumentListPage() {
       setBreadcrumb([]);
       loadContents(null);
     }
-    // 최초 마운트 시 1회만 복원(loadContents 는 안정적).
-  }, [loadContents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   // Variables (render)
   const crumbs = [
@@ -140,6 +133,12 @@ export function DocumentListPage() {
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}
         onChanged={() => loadContents(currentFolderId)}
+      />
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        parentId={currentFolderId}
+        onCreated={() => loadContents(currentFolderId)}
       />
     </AppShell>
   );

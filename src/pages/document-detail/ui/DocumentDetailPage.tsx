@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { koDate } from '@/shared/lib/date/format';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, Calendar } from 'lucide-react';
 import { documentsApi } from '@/domains/documents/api/documents.api';
@@ -16,11 +17,7 @@ export function DocumentDetailPage() {
   // Functions
   const formatDate = (iso: string | null) => {
     if (!iso) return '-';
-    return new Date(iso).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return koDate(new Date(iso));
   };
 
   // Effects
@@ -87,7 +84,7 @@ export function DocumentDetailPage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft size={20} />
-            <span>Back to Documents</span>
+            <span>문서로 돌아가기</span>
           </button>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-3">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { koDateTime } from "@/shared/lib/date/format";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import type { PartialBlock } from "@blocknote/core";
 import { AppShell } from "@/widgets/app-shell";
@@ -8,6 +9,7 @@ import {
   type DocumentEditorHandle,
 } from "@/widgets/document-editor";
 import { AiSummaryPanel } from "@/widgets/ai-summary-panel";
+import { DocumentLabels } from "@/widgets/document-labels";
 import { DocumentHistorySidePanel } from "@/widgets/document-history-side-panel";
 import { Avatar } from "@/shared/ui/avatar";
 import {
@@ -22,11 +24,16 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { useDocument } from "@/domains/documents";
 import { useSession } from "@/domains/auth/hooks/use-session";
+import { useWorkspaceRole } from "@/domains/workspaces";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
 import { useDeleteDocument } from "@/features/documents/delete-document/hooks/use-delete-document";
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
+import { useSuggestTags } from "@/features/ai/suggest-tags/hooks/use-suggest-tags";
+import { TagSuggestionDialog } from "@/features/labels/add-label/ui/TagSuggestionDialog";
+import { ShareDialog } from "@/features/sharing/share-resource/ui/ShareDialog";
+import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { ROUTES } from "@/shared/constants/routes";
 import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
 
@@ -65,13 +72,7 @@ function formatUpdated(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return koDateTime(date);
 }
 
 export function DocumentEditorPage() {
@@ -83,9 +84,11 @@ export function DocumentEditorPage() {
   const { data, error, isLoading, isError } = useDocument(documentId);
   const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
+  const { isAdmin } = useWorkspaceRole();
   const save = useSaveDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
   const summarize = useSummarizeDocument();
+  const suggestTags = useSuggestTags();
 
   // State
   const [title, setTitle] = useState("");
@@ -93,6 +96,8 @@ export function DocumentEditorPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
   // 복원 시에만 편집기를 리마운트해 되돌린 본문을 반영한다(저장 때마다 리마운트되면 커서가 초기화됨).
   const [restoreSeq, setRestoreSeq] = useState(0);
 
@@ -121,12 +126,25 @@ export function DocumentEditorPage() {
     if (!blocks || !documentId) return;
     setSummaryOpen(true);
     summarize.reset();
+    suggestTags.reset();
+    const content = blocksToPlainText(blocks);
     try {
       // 서버가 DB 원문을 요약하므로 최신 본문 저장을 먼저 수행한다.
       await save.mutateAsync({ title: title.trim() || "Untitled", blocks });
-      await summarize.mutateAsync(documentId);
+      // 요약(패널)과 태그 제안(팝업)을 독립적으로 진행 — 한쪽 실패가 다른 쪽을 막지 않는다.
+      summarize.mutateAsync(documentId).catch((error) => {
+        console.error("AI summarize failed:", error);
+      });
+      if (content) {
+        try {
+          const tags = await suggestTags.mutateAsync(content);
+          if (tags.length > 0) setTagDialogOpen(true);
+        } catch (error) {
+          console.error("AI tag suggestion failed:", error);
+        }
+      }
     } catch (error) {
-      console.error("AI summarize failed:", error);
+      console.error("Failed to save before summarize:", error);
     }
   };
 
@@ -156,6 +174,9 @@ export function DocumentEditorPage() {
   }
 
   const ownerName = data.updateUser ?? data.createUser ?? "Unknown";
+  // 삭제는 소유자(생성자) 또는 워크스페이스 관리자만.
+  const canDelete =
+    isAdmin || (!!session?.userId && data.createUser === session.userId);
   const ownerEmail = session?.email ?? null;
 
   // 진입 경로: 목록에서 넘겨준 state 우선, 없으면(새로고침/딥링크) folderId 로 트리에서 역산
@@ -203,9 +224,11 @@ export function DocumentEditorPage() {
           onToggleFavorite={() => setIsFavorite((v) => !v)}
           onSave={handleSave}
           onSummarize={handleSummarize}
+          onShare={() => setShareOpen(true)}
           onHistory={() => setHistoryOpen((v) => !v)}
           isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
+          canDelete={canDelete}
         />
       }
     >
@@ -231,6 +254,7 @@ export function DocumentEditorPage() {
               <span>Updated {formatUpdated(data.updateTime)}</span>
             )}
           </div>
+          <DocumentLabels documentId={documentId} />
         </div>
 
         {/* Writing area — BlockNote */}
@@ -257,14 +281,34 @@ export function DocumentEditorPage() {
         }}
       />
 
-      {/* AI summary panel */}
+      {/* AI summary panel — 문서가 바뀌면 대화 문맥도 새로 시작하도록 key 로 재마운트 */}
       <AiSummaryPanel
+        key={documentId}
         open={summaryOpen}
         isLoading={save.isPending || summarize.isPending}
         summary={summarize.data}
         isError={summarize.isError}
         onClose={() => setSummaryOpen(false)}
       />
+
+      {/* AI 추천 태그 선택 → 라벨 추가 */}
+      <TagSuggestionDialog
+        open={tagDialogOpen}
+        onOpenChange={setTagDialogOpen}
+        documentId={documentId}
+        suggestions={suggestTags.data ?? []}
+      />
+
+      {/* 공유 — 문서 목록의 공유 기능과 동일(ShareDialog) */}
+      {documentId && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          kind="document"
+          id={documentId}
+          name={title || data?.title || '문서'}
+        />
+      )}
 
       {/* 삭제 확인 */}
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
