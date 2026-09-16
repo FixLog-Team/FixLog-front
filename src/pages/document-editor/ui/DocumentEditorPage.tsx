@@ -28,6 +28,7 @@ import { useSaveDocument } from "@/features/documents/save-document/hooks/use-sa
 import { useDeleteDocument } from "@/features/documents/delete-document/hooks/use-delete-document";
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
 import { ROUTES } from "@/shared/constants/routes";
+import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
 
 /** 폴더 트리에서 targetId 까지의 조상 경로를 찾는다(루트→대상). 없으면 null. */
 function findFolderPath(
@@ -79,7 +80,7 @@ export function DocumentEditorPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const editorRef = useRef<DocumentEditorHandle>(null);
-  const { data, isLoading, isError } = useDocument(documentId);
+  const { data, error, isLoading, isError } = useDocument(documentId);
   const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
   const save = useSaveDocument(documentId ?? "");
@@ -141,10 +142,14 @@ export function DocumentEditorPage() {
   }
 
   if (isError || !data || !documentId) {
+    const errorMessage = isResourceAccessDeniedError(error)
+      ? "문서에 접근할 권한이 없습니다."
+      : "문서를 불러오지 못했습니다.";
+
     return (
       <AppShell>
         <div className="flex h-full items-center justify-center">
-          <p className="text-muted-foreground">문서를 불러오지 못했습니다.</p>
+          <p className="text-muted-foreground">{errorMessage}</p>
         </div>
       </AppShell>
     );
