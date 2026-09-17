@@ -3,7 +3,7 @@ import { trashApi } from '@/domains/trash/api/trash.api';
 import { QUERY_KEYS } from '@/app/config/query-keys';
 import type { TrashResourceType } from '@/domains/trash/types/trash';
 
-const TRASH_KEY = ['trash'] as const;
+const TRASH_KEY = QUERY_KEYS.trash;
 
 /** 휴지통 목록 조회(현재 워크스페이스). */
 export function useTrash() {

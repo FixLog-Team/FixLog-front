@@ -10,6 +10,7 @@ export function useDeleteFolder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.folders.all });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trash });
     },
   });
 }
