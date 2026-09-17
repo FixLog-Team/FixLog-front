@@ -3,7 +3,6 @@
  *
  * 권한 모델(최신): permissionType(ALLOW/DENY) + canDownload. 레벨(VIEWER/EDITOR/OWNER)은 폐기됨.
  * - ALLOW: 조회 허용, DENY: 명시적 차단(상속된 ALLOW보다 우선).
- * - 편집 여부(canEdit)는 서버 모델에 없다.
  */
 
 /** 권한 타입. ALLOW(허용) / DENY(차단). */

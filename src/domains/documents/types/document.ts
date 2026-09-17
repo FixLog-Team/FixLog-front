@@ -24,7 +24,6 @@ export interface DocumentDto {
 export interface ResourcePermissionDto {
   access: boolean;
   canDownload: boolean;
-  canEdit: boolean;
   source: 'DIRECT' | 'INHERITED' | 'WORKSPACE_DEFAULT';
   sourceDetail: string | null;
 }
