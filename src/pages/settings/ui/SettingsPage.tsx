@@ -372,12 +372,6 @@ function SecurityPolicyCard({ workspaceId }: { workspaceId?: string }) {
         <div className="mt-4 divide-y divide-border">
           <PolicyRow label="공유 허용" allowed={data.allowSharing} />
           <PolicyRow label="다운로드 허용" allowed={data.allowDownload} />
-          <PolicyRow
-            label="다운로드 워터마크"
-            allowed={data.enforceWatermark}
-            onLabel="적용"
-            offLabel="미적용"
-          />
           <PolicyValueRow
             label="감사 로그 보관"
             value={`${data.auditRetentionDays}일`}

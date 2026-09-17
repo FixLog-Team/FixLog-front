@@ -15,6 +15,7 @@ import {
   Trash2,
   LayoutDashboard,
   LogOut,
+  X,
 } from "lucide-react";
 import { ROUTES } from "@/shared/constants/routes";
 import { searchConversationPath } from "@/shared/constants/routes";
@@ -31,9 +32,21 @@ import {
 import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
 import { useSession, authApi } from "@/domains/auth";
 import { useConversations } from "@/domains/ai/hooks/use-conversations";
+import { useDeleteConversation } from "@/domains/ai/hooks/use-delete-conversation";
+import type { AIConversation } from "@/domains/ai";
 import { useWorkspaces, workspacesApi } from "@/domains/workspaces";
 import { workspaceStorage } from "@/shared/lib/workspace/workspace-storage";
 import { NameInputDialog } from "@/shared/ui/name-input-dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/shared/ui/alert-dialog";
 import { getApiErrorMessage } from "@/shared/lib/http/error-message";
 import { CreateFolderDialog } from "@/features/folders/create-folder/ui/CreateFolderDialog";
 
@@ -61,6 +74,7 @@ export function Sidebar() {
   const { folders } = useRootFolders(true);
   const { data: session } = useSession();
   const { data: conversationPage } = useConversations(5);
+  const deleteConversation = useDeleteConversation();
   const conversations = conversationPage?.items ?? [];
   const { data: workspaces } = useWorkspaces();
 
@@ -69,6 +83,8 @@ export function Sidebar() {
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [createWorkspaceError, setCreateWorkspaceError] = useState<string | null>(null);
+  // 삭제 확인 대상 대화방(팝업).
+  const [deleteTarget, setDeleteTarget] = useState<AIConversation | null>(null);
 
   // Variables
   const currentWorkspaceId = workspaceStorage.get();
@@ -126,6 +142,24 @@ export function Sidebar() {
     } finally {
       setIsCreatingWorkspace(false);
     }
+  };
+
+  // 대화방 삭제. 현재 보고 있는 대화방을 지우면 새 검색 화면으로 이동한다.
+  const handleDeleteConversation = () => {
+    const target = deleteTarget;
+    if (!target) return;
+    deleteConversation.mutate(target.conversationId, {
+      onSuccess: () => {
+        setDeleteTarget(null);
+        if (location.pathname === searchConversationPath(target.conversationId)) {
+          navigate(ROUTES.SEARCH);
+        }
+      },
+      onError: (error) => {
+        setDeleteTarget(null);
+        alert(getApiErrorMessage(error, "대화방 삭제에 실패했습니다."));
+      },
+    });
   };
 
   // 로그아웃: 클라이언트 토큰·워크스페이스 선택을 지우고 로그인 화면으로(하드 리로드로 전체 상태 초기화).
@@ -214,21 +248,42 @@ export function Sidebar() {
             {/* AI Search 하위 — 최근 대화방 5개 */}
             {item.to === ROUTES.SEARCH && conversations.length > 0 && (
               <div className="ml-4 flex flex-col gap-0.5 border-l border-border pl-2 pt-0.5">
-                {conversations.map((conv) => (
-                  <Link
-                    key={conv.conversationId}
-                    to={searchConversationPath(conv.conversationId)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
-                      location.pathname === searchConversationPath(conv.conversationId)
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <MessageSquare className="size-3.5 shrink-0" />
-                    <span className="truncate">{conv.title}</span>
-                  </Link>
-                ))}
+                {conversations.map((conv) => {
+                  const active =
+                    location.pathname === searchConversationPath(conv.conversationId);
+                  return (
+                    <div
+                      key={conv.conversationId}
+                      className={cn(
+                        "group flex items-center gap-1 rounded-md pr-1 text-[13px] transition-colors",
+                        active
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Link
+                        to={searchConversationPath(conv.conversationId)}
+                        className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5"
+                      >
+                        <MessageSquare className="size-3.5 shrink-0" />
+                        <span className="truncate">{conv.title}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        aria-label={`${conv.title} 대화방 삭제`}
+                        title="대화방 삭제"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeleteTarget(conv);
+                        }}
+                        className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -335,6 +390,34 @@ export function Sidebar() {
         errorMessage={createWorkspaceError}
         onSubmit={handleCreateWorkspace}
       />
+
+      {/* 대화방 삭제 확인 */}
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>대화방을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &apos;{deleteTarget?.title}&apos; 대화방을 삭제합니다. 삭제한 대화는 복구할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteConversation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConversation();
+              }}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }
