@@ -10,7 +10,6 @@ import { useRootFolders, useFolderChildren } from '@/domains/folders';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 import {
-  useAdminShares,
   useAdminUsers,
   useAdminResourcePermissions,
   useAdminGrantPermission,
@@ -37,7 +36,6 @@ import {
   Th,
   Td,
   StatusText,
-  ResourceCell,
 } from '@/pages/fixlog-admin/ui/shared';
 
 interface Selected {
@@ -86,7 +84,9 @@ export function AdminPermissionsSection({ workspace }: { workspace: Workspace })
               onClear={() => setSelected(null)}
             />
           ) : (
-            <SharesOverview workspaceId={workspace.workspaceId} />
+            <Notice>
+              왼쪽에서 폴더나 문서를 선택하면 구성원별 접근 권한을 관리할 수 있습니다.
+            </Notice>
           )}
         </div>
       </div>
@@ -598,68 +598,3 @@ function FolderSettingsControl({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Shares overview (nothing selected)                                    */
-/* ------------------------------------------------------------------ */
-
-function SharesOverview({ workspaceId }: { workspaceId: string }) {
-  const { data, isLoading, isError } = useAdminShares(workspaceId);
-  const rows = data ?? [];
-  return (
-    <div className="space-y-4">
-      <Notice>
-        왼쪽에서 폴더나 문서를 선택하면 접근권을 관리할 수 있습니다. 아래는 워크스페이스 전체의 공유 현황입니다(생성자
-        소유 권한 제외).
-      </Notice>
-      <Card className="overflow-hidden">
-        {isLoading ? (
-          <StatusText>불러오는 중…</StatusText>
-        ) : isError ? (
-          <StatusText>공유 현황을 불러올 수 없습니다.</StatusText>
-        ) : rows.length === 0 ? (
-          <StatusText>공유된 항목이 없습니다.</StatusText>
-        ) : (
-          <Table>
-            <THead>
-              <Th>리소스</Th>
-              <Th>대상</Th>
-              <Th>접근</Th>
-              <Th>다운로드</Th>
-              <Th>부여일</Th>
-            </THead>
-            <tbody className="divide-y divide-border">
-              {rows.map((row) => (
-                <tr key={row.permissionId} className="hover:bg-muted/40">
-                  <Td>
-                    <ResourceCell type={row.resourceType} id={row.resourceId} name={row.resourceName} />
-                  </Td>
-                  <Td>
-                    <span className="text-foreground">{row.principalName ?? row.principalId}</span>
-                    <span className="ml-1.5 text-xs text-muted-foreground">
-                      {row.principalType === 'GROUP' ? '그룹' : '사용자'}
-                    </span>
-                  </Td>
-                  <Td className={accessClass(row.permissionType)}>
-                    {PERMISSION_TYPE_LABEL[row.permissionType]}
-                  </Td>
-                  <Td
-                    className={
-                      row.permissionType === 'DENY'
-                        ? 'text-muted-foreground'
-                        : row.canDownload
-                          ? 'text-success'
-                          : 'text-destructive'
-                    }
-                  >
-                    {row.permissionType === 'DENY' ? '—' : row.canDownload ? '허용' : '금지'}
-                  </Td>
-                  <Td className="whitespace-nowrap text-muted-foreground">{formatDate(row.createAt)}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
-    </div>
-  );
-}

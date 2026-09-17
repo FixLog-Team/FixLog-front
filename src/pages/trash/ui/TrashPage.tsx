@@ -130,7 +130,7 @@ export function TrashPage() {
               {purgeTarget?.resourceType === 'FOLDER'
                 ? ' 폴더와 그 안의 항목을'
                 : ' 문서를'}{' '}
-              영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              영구 삭제합니다. 삭제된 항목은 복구할 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
