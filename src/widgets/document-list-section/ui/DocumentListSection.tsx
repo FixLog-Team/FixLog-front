@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { koDateTime } from '@/shared/lib/date/format';
 import {
@@ -12,10 +13,17 @@ import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
 import { Badge } from '@/shared/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+} from '@/shared/ui/dropdown-menu';
 import { ROUTES } from '@/shared/constants/routes';
 import { ItemActionsMenu } from '@/widgets/item-actions';
 import { useDocumentLabels } from '@/domains/labels';
 import { useOwnerName } from '@/domains/workspaces';
+import { useFavorites } from '@/domains/documents';
 import type { FolderItem } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 
@@ -27,6 +35,8 @@ interface DocumentListSectionProps {
   onDocumentClick?: (document: DocumentDto) => void;
   /** 이름변경/이동/삭제/복제 후 목록을 다시 불러오기 위한 콜백. */
   onChanged?: () => void;
+  /** 이동 성공 후 목적지 폴더(루트면 null)로 이동시키기 위한 콜백. */
+  onMoved?: (destinationId: string | null) => void;
 }
 
 // Name | Type | Owner | Last updated | Actions(⋮)
@@ -56,10 +66,18 @@ export function DocumentListSection({
   onFolderClick,
   onDocumentClick,
   onChanged,
+  onMoved,
 }: DocumentListSectionProps) {
   const resolveOwner = useOwnerName();
-  const isEmpty = folders.length === 0 && documents.length === 0;
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const favoritesQuery = useFavorites(onlyFavorites);
   const notifyChanged = () => onChanged?.();
+
+  // 즐겨찾기 필터가 켜지면 폴더는 숨기고 즐겨찾기 문서만 보여준다(폴더 무관 전체).
+  const shownFolders = onlyFavorites ? [] : folders;
+  const shownDocuments = onlyFavorites ? (favoritesQuery.data ?? []) : documents;
+  const listLoading = onlyFavorites ? favoritesQuery.isLoading : isLoading;
+  const isEmpty = shownFolders.length === 0 && shownDocuments.length === 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -70,10 +88,25 @@ export function DocumentListSection({
           icon={<Search />}
           placeholder="이 워크스페이스에서 검색..."
         />
-        <Button variant="secondary" className="h-11">
-          <SlidersHorizontal />
-          필터
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={onlyFavorites ? 'default' : 'secondary'}
+              className="h-11"
+            >
+              <SlidersHorizontal />
+              필터
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuCheckboxItem
+              checked={onlyFavorites}
+              onCheckedChange={(v) => setOnlyFavorites(!!v)}
+            >
+              즐겨찾기
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button variant="secondary" className="h-11">
           <ArrowUpDown />
           정렬
@@ -107,17 +140,17 @@ export function DocumentListSection({
           <span />
         </div>
 
-        {isLoading ? (
+        {listLoading ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
             불러오는 중…
           </p>
         ) : isEmpty ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-            폴더가 비었습니다.
+            {onlyFavorites ? '즐겨찾기한 문서가 없습니다.' : '폴더가 비었습니다.'}
           </p>
         ) : (
           <>
-            {folders.map((folder) => (
+            {shownFolders.map((folder) => (
               <div
                 key={folder.folderId}
                 role="button"
@@ -147,12 +180,13 @@ export function DocumentListSection({
                       ownerId: folder.createUser,
                     }}
                     onChanged={notifyChanged}
+                    onMoved={onMoved}
                   />
                 </span>
               </div>
             ))}
 
-            {documents.map((doc) => (
+            {shownDocuments.map((doc) => (
               <div
                 key={doc.documentId}
                 role="button"
@@ -176,6 +210,7 @@ export function DocumentListSection({
                       ownerId: doc.createUser,
                     }}
                     onChanged={notifyChanged}
+                    onMoved={onMoved}
                   />
                 </span>
               </div>

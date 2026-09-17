@@ -61,6 +61,27 @@ export const documentsApi = {
     return unwrap(res);
   },
 
+  /** 즐겨찾기한 문서 목록(최신순). 서버가 배열 또는 페이지로 줄 수 있어 둘 다 처리. */
+  async listFavorites(): Promise<DocumentDto[]> {
+    const res = await http.get<ApiResponse<DocumentDto[] | PageResponse<DocumentDto>>>(
+      `${PATH}/favorites`
+    );
+    const data = unwrap(res);
+    return Array.isArray(data) ? data : (data.items ?? []);
+  },
+
+  /** 즐겨찾기 추가. */
+  async addFavorite(documentId: string): Promise<void> {
+    const res = await http.post<ApiResponse<unknown>>(`${PATH}/${documentId}/favorite`);
+    ensureSuccess(res);
+  },
+
+  /** 즐겨찾기 해제. */
+  async removeFavorite(documentId: string): Promise<void> {
+    const res = await http.delete<ApiResponse<unknown>>(`${PATH}/${documentId}/favorite`);
+    ensureSuccess(res);
+  },
+
   /** 현재 사용자의 문서 유효 권한 조회. */
   async getMyPermission(documentId: string): Promise<ResourcePermissionDto> {
     try {

@@ -27,6 +27,7 @@ interface DocumentHeaderProps {
   onCreateDocument?: () => void;
   // detail mode
   isFavorite?: boolean;
+  isFavoritePending?: boolean;
   onToggleFavorite?: () => void;
   onShare?: () => void;
   /** 문서 PDF 다운로드(GET /api/documents/{id}/download). */
@@ -48,6 +49,7 @@ export function DocumentHeader({
   onCreateFolder,
   onCreateDocument,
   isFavorite = false,
+  isFavoritePending = false,
   onToggleFavorite,
   onShare,
   onDownload,
@@ -80,7 +82,9 @@ export function DocumentHeader({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="즐겨찾기 추가"
+            aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+            title={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+            disabled={isFavoritePending}
             onClick={onToggleFavorite}
           >
             <Star className={cn(isFavorite && 'fill-current text-primary')} />

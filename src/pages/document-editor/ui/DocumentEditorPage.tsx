@@ -22,7 +22,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/shared/ui/alert-dialog";
-import { useDocument } from "@/domains/documents";
+import { useDocument, useFavorites, useToggleFavorite } from "@/domains/documents";
 import { useSession } from "@/domains/auth/hooks/use-session";
 import { useWorkspaceRole, useOwnerName } from "@/domains/workspaces";
 import { useFolderTree } from "@/domains/folders";
@@ -84,6 +84,8 @@ export function DocumentEditorPage() {
   const location = useLocation();
   const editorRef = useRef<DocumentEditorHandle>(null);
   const { data, error, isLoading, isError } = useDocument(documentId);
+  const { data: favorites } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
   const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
   const { isAdmin } = useWorkspaceRole();
@@ -96,7 +98,6 @@ export function DocumentEditorPage() {
 
   // State
   const [title, setTitle] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -203,6 +204,8 @@ export function DocumentEditorPage() {
 
   // 소유자는 생성자(createUser). userId 를 구성원 목록으로 실제 이름으로 변환한다.
   const ownerName = resolveOwner(data.createUser);
+  // 즐겨찾기 여부는 즐겨찾기 목록에 이 문서가 있는지로 판단.
+  const isFavorite = !!favorites?.some((d) => d.documentId === documentId);
   // 삭제는 소유자(생성자) 또는 워크스페이스 관리자만.
   const canDelete =
     isAdmin || (!!session?.userId && data.createUser === session.userId);
@@ -265,8 +268,11 @@ export function DocumentEditorPage() {
           mode="detail"
           breadcrumb={breadcrumb}
           isFavorite={isFavorite}
+          isFavoritePending={toggleFavorite.isPending}
           isSaving={save.isPending}
-          onToggleFavorite={() => setIsFavorite((v) => !v)}
+          onToggleFavorite={() =>
+            toggleFavorite.mutate({ documentId, favorite: !isFavorite })
+          }
           onSave={handleSave}
           onSummarize={handleSummarize}
           onShare={handleShare}
@@ -363,8 +369,8 @@ export function DocumentEditorPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{data.title}&apos; 문서를 삭제합니다. 삭제된 문서는 복구할 수
-              없습니다.
+              &apos;{data.title}&apos; 문서를 삭제합니다. 삭제한 문서는 휴지통으로
+              이동하며, 휴지통에서 복원할 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

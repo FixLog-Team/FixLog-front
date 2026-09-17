@@ -19,8 +19,7 @@ import { Card } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
 import { useSession } from '@/domains/auth';
-import { DEMO_DOCUMENTS } from '@/domains/documents/lib/mock-data/demo-documents';
-import type { DemoDocument } from '@/domains/documents/lib/mock-data/demo-documents';
+import { useFavorites } from '@/domains/documents';
 import { documentsApi } from '@/domains/documents/api/documents.api';
 import type { DocumentDto } from '@/domains/documents/types/document';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
@@ -43,12 +42,10 @@ const QUICK_ACTIONS = [
   { key: 'import', label: '문서 가져오기', icon: Upload },
 ] as const;
 
-// 최근 문서 표시 개수(가장 최근 수정 순).
+// 최근 문서·고정됨(즐겨찾기) 표시 개수(가장 최근 수정 순).
 const RECENT_LIMIT = 4;
 // 최근 수정 폴더 표시 개수.
 const RECENT_FOLDER_LIMIT = 6;
-
-const PINNED = [DEMO_DOCUMENTS[2], DEMO_DOCUMENTS[0], DEMO_DOCUMENTS[4]];
 
 export function WorkspaceHomePage() {
   // State
@@ -67,8 +64,11 @@ export function WorkspaceHomePage() {
     queryFn: () => documentsApi.list({ page: 0, size: RECENT_LIMIT }),
   });
   const recentFoldersQuery = useRecentFolders(RECENT_FOLDER_LIMIT);
+  const favoritesQuery = useFavorites();
 
   // Variables
+  // 고정됨(즐겨찾기) 상위 3개.
+  const pinned = (favoritesQuery.data ?? []).slice(0, RECENT_LIMIT);
   const firstName = (session?.userName ?? '').split(' ')[0];
   const recentDocuments = recentQuery.data?.items ?? [];
   const recentFolders = recentFoldersQuery.data ?? [];
@@ -229,13 +229,23 @@ export function WorkspaceHomePage() {
               <h2 className="text-sm font-semibold text-foreground">고정됨</h2>
             </div>
             <div className="space-y-1">
-              {PINNED.map((doc) => (
-                <DocRow
-                  key={doc.id}
-                  doc={doc}
-                  onClick={() => navigate(documentDetailPath(doc.id))}
-                />
-              ))}
+              {favoritesQuery.isLoading ? (
+                <p className="px-2.5 py-2 text-sm text-muted-foreground">
+                  불러오는 중…
+                </p>
+              ) : pinned.length === 0 ? (
+                <p className="px-2.5 py-2 text-sm text-muted-foreground">
+                  즐겨찾기한 문서가 없습니다.
+                </p>
+              ) : (
+                pinned.map((doc) => (
+                  <RecentDocRow
+                    key={doc.documentId}
+                    doc={doc}
+                    onClick={() => navigate(documentDetailPath(doc.documentId))}
+                  />
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -344,30 +354,6 @@ function RecentDocRow({
       {firstLabel && <Badge variant="tag">{firstLabel.labelName}</Badge>}
       <span className="shrink-0 text-xs text-muted-foreground">
         {formatUpdated(doc.updateTime)}
-      </span>
-    </button>
-  );
-}
-
-/** Pinned 등 목업(DemoDocument) 행. */
-function DocRow({ doc, onClick }: { doc: DemoDocument; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-card"
-    >
-      <FileText className="size-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-foreground">
-          {doc.title}
-        </span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {doc.folderPath}
-        </span>
-      </span>
-      {doc.tags[0] && <Badge variant="tag">{doc.tags[0]}</Badge>}
-      <span className="shrink-0 text-xs text-muted-foreground">
-        {doc.updatedLabel}
       </span>
     </button>
   );

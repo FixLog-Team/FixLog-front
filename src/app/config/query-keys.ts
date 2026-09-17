@@ -7,6 +7,7 @@ export const QUERY_KEYS = {
     historyDetail: (documentId: string, historyId: string) =>
       ['documents', documentId, 'history', historyId] as const,
     saveState: (documentId: string) => ['documents', documentId, 'save-state'] as const,
+    favorites: ['documents', 'favorites'] as const,
   },
   folders: {
     all: ['folders'] as const,
@@ -28,4 +29,5 @@ export const QUERY_KEYS = {
   invitations: {
     preview: (token: string) => ['invitations', token] as const,
   },
+  trash: ['trash'] as const,
 } as const;
