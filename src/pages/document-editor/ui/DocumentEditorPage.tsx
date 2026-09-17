@@ -344,7 +344,7 @@ export function DocumentEditorPage() {
         onClose={() => setSummaryOpen(false)}
       />
 
-      {/* AI 추천 태그 선택 → 라벨 추가 */}
+      {/* AI 추천 태그 선택 → 태그 추가 */}
       <TagSuggestionDialog
         open={tagDialogOpen}
         onOpenChange={setTagDialogOpen}

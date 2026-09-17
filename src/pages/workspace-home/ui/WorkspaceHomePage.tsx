@@ -330,7 +330,7 @@ function FolderCard({
   );
 }
 
-/** 최근 문서 행(실제 DocumentDto). 라벨 첫 개를 pill 로 표시. */
+/** 최근 문서 행(실제 DocumentDto). 태그 첫 개를 pill 로 표시. */
 function RecentDocRow({
   doc,
   onClick,

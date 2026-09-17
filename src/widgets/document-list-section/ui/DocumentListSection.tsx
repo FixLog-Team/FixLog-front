@@ -222,7 +222,7 @@ export function DocumentListSection({
   );
 }
 
-/** 문서 이름 셀. 제목 아래에 라벨 pill 을 보여준다. 라벨이 없으면 라벨 영역을 렌더하지 않는다. */
+/** 문서 이름 셀. 제목 아래에 태그 pill 을 보여준다. 태그가 없으면 태그 영역을 렌더하지 않는다. */
 function DocumentNameCell({
   title,
   documentId,

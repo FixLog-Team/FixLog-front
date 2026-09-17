@@ -19,7 +19,7 @@
 9. [공유 API](#9-공유-api)
 10. [문서 히스토리 API](#10-문서-히스토리-api)
 11. [휴지통 API](#11-휴지통-api)
-12. [라벨 API](#12-라벨-api)
+12. [태그 API](#12-태그-api)
 13. [관리자 콘솔 API](#13-관리자-콘솔-api)
 14. [보안 정책 API](#14-보안-정책-api)
 15. [에러 처리](#15-에러-처리)
@@ -721,8 +721,8 @@ Content-Disposition: attachment; filename*=UTF-8''문서제목.pdf
 }
 ```
 
-> **이 응답은 제안일 뿐 문서에 저장되지 않습니다.** 라벨로 붙이려면 사용자가 고른 것만
-> `POST /api/documents/{documentId}/labels`로 보냅니다 (→ [라벨 API](#12-라벨-api)).
+> **이 응답은 제안일 뿐 문서에 저장되지 않습니다.** 태그로 붙이려면 사용자가 고른 것만
+> `POST /api/documents/{documentId}/labels`로 보냅니다 (→ [태그 API](#12-태그-api)).
 
 ---
 
@@ -1386,23 +1386,23 @@ Swagger:
 ### DELETE /api/trash/{resourceType}/{resourceId}
 > [Swagger →](https://fixlog.art/fixlog/swagger-ui.html#/Trash/purgeFromTrash)
 
-영구 삭제. 문서는 본문·히스토리·라벨·권한이 함께 사라집니다. **되돌릴 수 없습니다.**
+영구 삭제. 문서는 본문·히스토리·태그·권한이 함께 사라집니다. **되돌릴 수 없습니다.**
 
 ---
 
-## 12. 라벨 API
+## 12. 태그 API
 
 | 메서드 | 경로 | 비고 | Swagger |
 |---|---|---|---|
-| `GET` | `/api/labels` | 워크스페이스의 라벨 목록 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/listLabels) |
-| `GET` | `/api/labels/{labelId}/documents` | 라벨이 붙은 문서. **권한 있는 것만** 나옵니다 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/listDocumentsWithLabel) |
-| `GET` | `/api/documents/{documentId}/labels` | 문서에 붙은 라벨 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/listDocumentLabels) |
+| `GET` | `/api/labels` | 워크스페이스의 태그 목록 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/listLabels) |
+| `GET` | `/api/labels/{labelId}/documents` | 태그가 붙은 문서. **권한 있는 것만** 나옵니다 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/listDocumentsWithLabel) |
+| `GET` | `/api/documents/{documentId}/labels` | 문서에 붙은 태그 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/listDocumentLabels) |
 | `POST` | `/api/documents/{documentId}/labels` | `{ "labelName": "spring" }`. 편집 권한 필요 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/attachLabel) |
 | `DELETE` | `/api/documents/{documentId}/labels/{labelId}` | 편집 권한 필요 | [→](https://fixlog.art/fixlog/swagger-ui.html#/Trash/detachLabel) |
 
-같은 이름의 라벨은 워크스페이스에서 하나로 공유되며, 없는 이름을 붙이면 그때 만들어집니다.
+같은 이름의 태그는 워크스페이스에서 하나로 공유되며, 없는 이름을 붙이면 그때 만들어집니다.
 
-### AI 태그를 라벨로 붙이기
+### AI 추천 태그를 문서에 추가하기
 
 `POST /ai/tags`가 돌려주는 태그는 **제안**입니다. 서버는 제안을 저장하지 않으므로 흐름은
 이렇습니다.

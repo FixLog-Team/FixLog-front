@@ -23,7 +23,7 @@ interface TagSuggestionDialogProps {
 
 /**
  * AI 추천 태그 선택 팝업. 요약과 함께 받은 태그 제안을 보여주고,
- * 사용자가 고른 것만 라벨로 문서에 추가한다(POST /api/documents/{id}/labels).
+ * 사용자가 고른 것만 태그로 문서에 추가한다(POST /api/documents/{id}/labels).
  */
 export function TagSuggestionDialog({
   open,
