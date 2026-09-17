@@ -17,7 +17,7 @@ interface AddLabelDialogProps {
   documentId: string;
 }
 
-/** 라벨 직접 입력 추가 팝업. 입력한 이름을 문서에 라벨로 추가한다(없으면 서버가 생성). */
+/** 태그 직접 입력 추가 팝업. 입력한 이름을 문서에 태그로 추가한다(없으면 서버가 생성). */
 export function AddLabelDialog({
   open,
   onOpenChange,
@@ -48,13 +48,13 @@ export function AddLabelDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>라벨 추가</DialogTitle>
+            <DialogTitle>태그 추가</DialogTitle>
           </DialogHeader>
           <Input
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="라벨 이름"
+            placeholder="태그 이름"
             className="mt-4"
           />
           <DialogFooter className="mt-6">

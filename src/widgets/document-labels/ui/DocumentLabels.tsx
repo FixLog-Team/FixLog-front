@@ -9,9 +9,9 @@ interface DocumentLabelsProps {
 }
 
 /**
- * 문서 상세의 라벨 행(날짜 아래, 가로 표시).
- * - 라벨이 있으면 라벨 목록 + 우측 "편집"(파란색) 버튼을 보여준다.
- * - 편집 모드: 각 라벨에 X(삭제) 버튼, 편집 버튼 좌측에 "추가" 버튼(직접 입력 팝업).
+ * 문서 상세의 태그 행(날짜 아래, 가로 표시).
+ * - 태그가 있으면 태그 목록 + 우측 "편집"(파란색) 버튼을 보여준다.
+ * - 편집 모드: 각 태그에 X(삭제) 버튼, 편집 버튼 좌측에 "추가" 버튼(직접 입력 팝업).
  * - 편집 버튼을 다시 누르면 편집 모드 종료.
  */
 export function DocumentLabels({ documentId }: DocumentLabelsProps) {
@@ -26,8 +26,8 @@ export function DocumentLabels({ documentId }: DocumentLabelsProps) {
   // Variables
   const labels = data ?? [];
 
-  // 라벨이 없고 편집 중도 아니면, 직접 추가할 수 있도록 "라벨 추가" 버튼만 보여준다.
-  // (요약을 하지 않아도 라벨을 붙일 수 있게 함)
+  // 태그가 없고 편집 중도 아니면, 직접 추가할 수 있도록 "태그 추가" 버튼만 보여준다.
+  // (요약을 하지 않아도 태그를 붙일 수 있게 함)
   if (labels.length === 0 && !isEditing) {
     return (
       <div className="mt-2">
@@ -37,7 +37,7 @@ export function DocumentLabels({ documentId }: DocumentLabelsProps) {
           className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-primary transition-colors hover:bg-muted"
         >
           <Plus className="size-3" />
-          라벨 추가
+          태그 추가
         </button>
         <AddLabelDialog open={addOpen} onOpenChange={setAddOpen} documentId={documentId} />
       </div>
