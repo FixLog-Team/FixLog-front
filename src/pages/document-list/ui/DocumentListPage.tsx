@@ -3,18 +3,36 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AppShell } from '@/widgets/app-shell';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
-import { foldersApi } from '@/domains/folders';
-import type { FolderItem, FolderPathItem } from '@/domains/folders';
+import { foldersApi, useFolderTree } from '@/domains/folders';
+import type { FolderItem, FolderPathItem, FolderTreeNode } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
 import { CreateFolderDialog } from '@/features/folders/create-folder/ui/CreateFolderDialog';
 import { documentDetailPath } from '@/shared/constants/routes';
+
+/** 폴더 트리에서 targetId 까지의 경로(루트→대상)를 찾는다. 없으면 null. */
+function findFolderPath(
+  nodes: FolderTreeNode[],
+  targetId: string,
+): FolderPathItem[] | null {
+  for (const node of nodes) {
+    const self: FolderPathItem = {
+      folderId: node.folderId,
+      folderName: node.folderName,
+    };
+    if (node.folderId === targetId) return [self];
+    const childPath = findFolderPath(node.children, targetId);
+    if (childPath) return [self, ...childPath];
+  }
+  return null;
+}
 
 export function DocumentListPage() {
   // Hooks
   const navigate = useNavigate();
   const location = useLocation();
   const createDocument = useCreateDocument();
+  const { data: folderTree } = useFolderTree();
 
   // State
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -59,6 +77,18 @@ export function DocumentListPage() {
     navigate(documentDetailPath(document.documentId), {
       state: { folderPath: breadcrumb },
     });
+  };
+
+  // 이동 성공 후: 옮긴 항목이 있는 목적지 폴더(루트면 null)를 연다.
+  const handleMoved = (destinationId: string | null) => {
+    if (destinationId === null) {
+      setBreadcrumb([]);
+      loadContents(null);
+      return;
+    }
+    const path = folderTree ? findFolderPath(folderTree, destinationId) : null;
+    setBreadcrumb(path ?? [{ folderId: destinationId, folderName: '폴더' }]);
+    loadContents(destinationId);
   };
 
   const handleBreadcrumbClick = (index: number) => {
@@ -133,6 +163,7 @@ export function DocumentListPage() {
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}
         onChanged={() => loadContents(currentFolderId)}
+        onMoved={handleMoved}
       />
       <CreateFolderDialog
         open={createFolderOpen}

@@ -45,6 +45,8 @@ interface ItemActionsMenuProps {
   target: ActionTarget;
   /** 액션 성공 후 목록을 갱신하기 위한 콜백(리스트가 로컬 state 기반이라 필요). */
   onChanged: () => void;
+  /** 이동 성공 후 목적지 폴더(루트면 null)로 이동시키기 위한 콜백. */
+  onMoved?: (destinationId: string | null) => void;
 }
 
 type OpenDialog = 'rename' | 'move' | 'delete' | null;
@@ -53,7 +55,7 @@ type OpenDialog = 'rename' | 'move' | 'delete' | null;
  * 목록 행의 ⋮ 액션 메뉴. 폴더/문서 공통으로 이름변경·복제(문서)·이동·삭제를 제공한다.
  * 안드로이드 MainActivity 의 롱클릭 컨텍스트 메뉴와 대응된다.
  */
-export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
+export function ItemActionsMenu({ target, onChanged, onMoved }: ItemActionsMenuProps) {
   const isFolder = target.kind === 'folder';
 
   // 역할 기반 게이팅: 공유/삭제는 소유자 전용(OWNER) 액션이므로,
@@ -124,6 +126,8 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
       }
       onChanged();
       close();
+      // 이동한 폴더를 열어 옮긴 항목을 그 위치에서 보여준다.
+      onMoved?.(destinationId);
     } catch (error) {
       console.error('move failed:', error);
     }
@@ -268,8 +272,8 @@ export function ItemActionsMenu({ target, onChanged }: ItemActionsMenuProps) {
             <AlertDialogTitle>삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
               {isFolder
-                ? `'${target.name}' 폴더를 삭제합니다. 하위 폴더와 문서도 함께 삭제됩니다.`
-                : `'${target.name}' 문서를 삭제합니다.`}
+                ? `'${target.name}' 폴더와 하위 폴더·문서를 휴지통으로 이동합니다. 휴지통에서 복원할 수 있습니다.`
+                : `'${target.name}' 문서를 휴지통으로 이동합니다. 휴지통에서 복원할 수 있습니다.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
