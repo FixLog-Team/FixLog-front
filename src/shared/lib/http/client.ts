@@ -31,7 +31,7 @@ http.interceptors.request.use((config) => {
   }
   // 현재 워크스페이스 스코프. 없으면 헤더 생략 → 서버는 개인 워크스페이스로 처리.
   const workspaceId = workspaceStorage.get();
-  if (workspaceId) {
+  if (workspaceId && !config.headers.has('X-Workspace-Id')) {
     config.headers['X-Workspace-Id'] = workspaceId;
   }
   return config;

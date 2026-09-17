@@ -164,6 +164,12 @@ export function AiSummaryPanel({
 
       {/* Ask input */}
       <div className="border-t border-border p-4">
+        {chat.error && (
+          <div role="alert" className="mb-3 text-sm text-destructive">
+            <p>{chat.error}</p>
+            <button type="button" onClick={chat.reset} className="mt-1 underline">새 대화</button>
+          </div>
+        )}
         <form
           onSubmit={handleSubmit}
           className="flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
@@ -179,7 +185,7 @@ export function AiSummaryPanel({
           <button
             type="submit"
             aria-label="질문"
-            disabled={!question.trim() || chat.isPending}
+            disabled={!question.trim() || chat.isPending || chat.isLoading || !!chat.error}
             className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
           >
             <ArrowUp className="size-3.5" />

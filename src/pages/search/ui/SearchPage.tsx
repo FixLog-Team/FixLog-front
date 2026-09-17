@@ -42,8 +42,16 @@ export function SearchPage() {
   useEffect(() => {
     const q = searchParams.get('q')?.trim();
     if (!q || conversationId || autoQueryRef.current === q) return;
-    autoQueryRef.current = q;
-    if (chat.send(q)) setSearchParams({}, { replace: true });
+    // StrictMode의 첫 effect 정리에서 취소될 요청을 만들지 않는다.
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled || autoQueryRef.current === q) return;
+      if (chat.send(q)) {
+        autoQueryRef.current = q;
+        setSearchParams({}, { replace: true });
+      }
+    });
+    return () => { cancelled = true; };
   }, [searchParams, conversationId, chat, setSearchParams]);
 
   // Functions
@@ -72,7 +80,7 @@ export function SearchPage() {
         <PageHeader
           title="AI 검색"
           action={
-            hasStarted ? (
+            hasStarted || chat.error ? (
               <button
                 onClick={startNewChat}
                 className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
@@ -85,6 +93,7 @@ export function SearchPage() {
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
+        {chat.error && <p role="alert" className="px-6 py-3 text-sm text-destructive">{chat.error}</p>}
         {/* Conversation — 시작 전에는 빈 상태 안내, 전송 후 턴이 누적 표시됨 */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {!hasStarted && (
@@ -196,7 +205,7 @@ export function SearchPage() {
                 type="submit"
                 aria-label="보내기"
                 className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
-                disabled={!query.trim() || chat.isPending}
+                disabled={!query.trim() || chat.isPending || chat.isLoading || !!chat.error}
               >
                 <ArrowUp className="size-4" />
               </button>

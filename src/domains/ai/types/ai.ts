@@ -33,6 +33,7 @@ export interface AskResult {
  */
 
 export interface AIConversation {
+  workspaceId: string;
   conversationId: string;
   title: string;
   createTime: string;
