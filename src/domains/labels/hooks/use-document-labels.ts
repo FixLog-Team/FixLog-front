@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { labelsApi } from '@/domains/labels/api/labels.api';
+import { QUERY_KEYS } from '@/app/config/query-keys';
 
 /**
  * 문서에 붙은 태그 조회(문서 목록의 태그 표시용).
@@ -7,7 +8,7 @@ import { labelsApi } from '@/domains/labels/api/labels.api';
  */
 export function useDocumentLabels(documentId: string) {
   return useQuery({
-    queryKey: ['labels', 'document', documentId],
+    queryKey: QUERY_KEYS.labels.document(documentId),
     queryFn: () => labelsApi.getForDocument(documentId),
     enabled: !!documentId,
     retry: false,

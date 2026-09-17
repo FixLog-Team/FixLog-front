@@ -10,8 +10,13 @@ import {
 } from "@/widgets/document-editor";
 import { AiSummaryPanel } from "@/widgets/ai-summary-panel";
 import { DocumentLabels } from "@/widgets/document-labels";
-import { DocumentHistorySidePanel } from "@/widgets/document-history-side-panel";
+import {
+  DocumentHistorySidePanel,
+  type HistoryVersionRef,
+} from "@/widgets/document-history-side-panel";
+import { RotateCcw } from "lucide-react";
 import { Avatar } from "@/shared/ui/avatar";
+import { Button } from "@/shared/ui/button";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -28,6 +33,8 @@ import { useWorkspaceRole, useOwnerName } from "@/domains/workspaces";
 import { useFolderTree } from "@/domains/folders";
 import type { FolderPathItem, FolderTreeNode } from "@/domains/folders";
 import { useSaveDocument } from "@/features/documents/save-document/hooks/use-save-document";
+import { useDocumentHistory } from "@/features/documents/restore-document/hooks/use-document-history";
+import { useRestoreDocument } from "@/features/documents/restore-document/hooks/use-restore-document";
 import { useDeleteDocument } from "@/features/documents/delete-document/hooks/use-delete-document";
 import { useDownloadDocument } from "@/features/documents/download-document/hooks/use-download-document";
 import { useSummarizeDocument } from "@/features/ai/summarize-document/hooks/use-summarize-document";
@@ -91,6 +98,7 @@ export function DocumentEditorPage() {
   const { isAdmin } = useWorkspaceRole();
   const resolveOwner = useOwnerName();
   const save = useSaveDocument(documentId ?? "");
+  const restore = useRestoreDocument(documentId ?? "");
   const deleteDocument = useDeleteDocument();
   const downloadDocument = useDownloadDocument();
   const summarize = useSummarizeDocument();
@@ -105,8 +113,16 @@ export function DocumentEditorPage() {
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   // 복원 시에만 편집기를 리마운트해 되돌린 본문을 반영한다(저장 때마다 리마운트되면 커서가 초기화됨).
   const [restoreSeq, setRestoreSeq] = useState(0);
+  // 버전 기록에서 선택한 과거 버전. null 이면 현재 버전을 편집 중이다.
+  const [preview, setPreview] = useState<HistoryVersionRef | null>(null);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+  // 미리보기로 들어가기 직전의 편집 중 내용. 되돌아올 때 그대로 살려낸다(저장 안 한 작업 보호).
+  const draftRef = useRef<{ title: string; blocks: PartialBlock[] | undefined } | null>(null);
   // Ctrl/Cmd+S 콜백이 stale 클로저 없이 최신 저장을 호출하도록 ref 로 보관.
   const saveNowRef = useRef<() => void>(() => {});
+
+  // 미리보기 중인 버전의 본문. 선택이 없으면 조회하지 않는다.
+  const previewVersion = useDocumentHistory(documentId, preview?.historyId ?? null);
 
   // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
   useEffect(() => {
@@ -128,6 +144,11 @@ export function DocumentEditorPage() {
   // Functions
   // 현재 편집 내용을 저장(완료까지 await). 성공 여부를 반환하고, showToast=true 면 성공 토스트.
   const persist = async (showToast = false): Promise<boolean> => {
+    // 미리보기 중에는 편집기에 과거 버전이 올라가 있다. 그대로 저장하면 현재 내용을 덮어쓴다.
+    if (preview) {
+      toast.error("버전 미리보기 중에는 저장할 수 없어요. 현재 버전으로 돌아간 뒤 저장해 주세요.");
+      return false;
+    }
     const blocks = editorRef.current?.getBlocks();
     if (!blocks || !data) return true; // 저장할 내용이 없으면 통과
     try {
@@ -142,19 +163,64 @@ export function DocumentEditorPage() {
 
   const handleSave = async () => {
     const ok = await persist(true);
-    if (!ok) alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    // 미리보기 때문에 막힌 경우는 persist 가 이미 안내했으므로 실패 알림을 겹치지 않는다.
+    if (!ok && !preview) alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
   };
   // Ctrl/Cmd+S 콜백이 최신 handleSave 를 호출하도록 매 렌더 갱신.
   saveNowRef.current = handleSave;
 
   // 공유: 최신 내용을 먼저 저장한 뒤 공유 대화상자를 연다.
+  // 미리보기 중에는 편집기에 과거 버전이 올라가 있어 저장을 건너뛰고 대화상자만 연다.
   const handleShare = async () => {
-    await persist();
+    if (!preview) await persist();
     setShareOpen(true);
+  };
+
+  /**
+   * 버전 기록에서 고른 버전을 좌측 본문에 읽기 전용으로 띄운다. null 이면 현재 버전으로 돌아간다.
+   * 처음 미리보기로 들어갈 때 편집 중이던 제목·본문을 draftRef 에 담아 두었다가 복귀 시 되살린다.
+   */
+  const handlePreview = (version: HistoryVersionRef | null) => {
+    if (version === null) {
+      setPreview(null);
+      if (draftRef.current) setTitle(draftRef.current.title);
+      return;
+    }
+    if (!preview) {
+      const blocks = editorRef.current?.getBlocks() as PartialBlock[] | undefined;
+      // 빈 배열을 initialContent 로 넘기면 BlockNote 가 초기화에 실패하므로 undefined(빈 문서)로 둔다.
+      draftRef.current = { title, blocks: blocks?.length ? blocks : undefined };
+    }
+    setPreview(version);
+  };
+
+  const handleRestore = () => {
+    if (!preview) return;
+    restore.mutate(preview.historyId, {
+      onSuccess: (restored) => {
+        setIsRestoreConfirmOpen(false);
+        // 복원된 내용이 곧 현재 버전이다. 미리보기를 닫고 보관해 둔 편집 초안도 버린다.
+        draftRef.current = null;
+        setPreview(null);
+        setTitle(restored.title);
+        setRestoreSeq((seq) => seq + 1);
+        toast.success(`v${preview.versionNo} 내용으로 되돌렸어요.`);
+      },
+      onError: (error) => {
+        console.error("Failed to restore document version:", error);
+        setIsRestoreConfirmOpen(false);
+        alert("복원에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      },
+    });
   };
 
   const handleSummarize = async () => {
     if (!documentId) return;
+    // 요약은 저장된 현재 본문을 대상으로 한다. 미리보기 중이면 무엇을 요약할지가 모호해 막는다.
+    if (preview) {
+      toast.error("버전 미리보기 중에는 요약할 수 없어요. 현재 버전으로 돌아간 뒤 실행해 주세요.");
+      return;
+    }
     setSummaryOpen(true);
     summarize.reset();
     suggestTags.reset();
@@ -237,7 +303,7 @@ export function DocumentEditorPage() {
   const handleDownload = async () => {
     const ok = await persist();
     if (!ok) {
-      alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      if (!preview) alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
       return;
     }
     try {
@@ -278,7 +344,11 @@ export function DocumentEditorPage() {
           onShare={handleShare}
           onDownload={handleDownload}
           isDownloading={downloadDocument.isPending}
-          onHistory={() => setHistoryOpen((v) => !v)}
+          onHistory={() => {
+            // 패널을 닫을 때는 미리보기도 함께 풀어야 과거 버전이 본문에 남지 않는다.
+            if (historyOpen) handlePreview(null);
+            setHistoryOpen((v) => !v);
+          }}
           isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
           canDelete={canDelete}
@@ -287,11 +357,35 @@ export function DocumentEditorPage() {
     >
       {/* Content column */}
       <div className="flex min-w-0 flex-1 flex-col bg-card">
+        {/* 과거 버전 미리보기 배너 — 지금 보이는 본문이 현재 문서가 아님을 알린다 */}
+        {preview && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-12 py-3">
+            <span className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">v{preview.versionNo}</span>
+              {preview.createTime ? ` · ${formatUpdated(preview.createTime)}` : ""} 버전을 보고 있어요 · 읽기 전용
+            </span>
+            <span className="flex items-center gap-2">
+              <Button
+                size="sm"
+                disabled={restore.isPending || previewVersion.isLoading}
+                onClick={() => setIsRestoreConfirmOpen(true)}
+              >
+                <RotateCcw />
+                {restore.isPending ? "복원 중…" : "이 버전으로 복원"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handlePreview(null)}>
+                현재 버전으로 돌아가기
+              </Button>
+            </span>
+          </div>
+        )}
+
         {/* Title + meta */}
         <div className="mx-auto w-full max-w-4xl px-12 pt-12">
           <input
-            value={title}
+            value={preview ? preview.title : title}
             onChange={(e) => setTitle(e.target.value)}
+            readOnly={preview !== null}
             placeholder="제목을 입력하세요"
             aria-label="문서 제목"
             className="w-full bg-transparent text-[36px] font-semibold leading-tight tracking-[-0.022em] text-foreground outline-none placeholder:text-muted-foreground"
@@ -303,36 +397,88 @@ export function DocumentEditorPage() {
                 {ownerName}
               </span>
             </span>
-            {data.updateTime && (
-              <span>Updated {formatUpdated(data.updateTime)}</span>
+            {preview ? (
+              preview.createTime && <span>{formatUpdated(preview.createTime)}에 저장된 내용</span>
+            ) : (
+              data.updateTime && <span>Updated {formatUpdated(data.updateTime)}</span>
             )}
           </div>
-          <DocumentLabels documentId={documentId} />
+          {/* 라벨은 버전 스냅샷에 포함되지 않으므로 과거 버전을 볼 때는 감춘다(현재 라벨을 그 시점 것으로 오해하지 않도록). */}
+          {!preview && <DocumentLabels documentId={documentId} />}
         </div>
 
         {/* Writing area — BlockNote */}
         <div className="min-h-0 flex-1">
-          <DocumentEditor
-            key={`${documentId}-${restoreSeq}`}
-            ref={editorRef}
-            initialBlocks={parseBlocks(data.blocks)}
-          />
+          {preview ? (
+            previewVersion.isLoading ? (
+              <p className="px-12 py-12 text-sm text-muted-foreground">
+                이 버전의 본문을 불러오는 중…
+              </p>
+            ) : previewVersion.isError ? (
+              <p className="px-12 py-12 text-sm text-muted-foreground">
+                이 버전의 본문을 불러오지 못했습니다.
+              </p>
+            ) : (
+              <DocumentEditor
+                key={`${documentId}-preview-${preview.historyId}`}
+                ref={editorRef}
+                initialBlocks={parseBlocks(previewVersion.data?.blocks ?? null)}
+                editable={false}
+              />
+            )
+          ) : (
+            <DocumentEditor
+              key={`${documentId}-${restoreSeq}`}
+              ref={editorRef}
+              initialBlocks={
+                // 미리보기를 거쳐 돌아온 경우에는 저장 안 한 편집 내용을 그대로 되살린다.
+                draftRef.current ? draftRef.current.blocks : parseBlocks(data.blocks)
+              }
+            />
+          )}
         </div>
       </div>
 
-      {/* 버전 기록 패널 */}
+      {/* 버전 기록 패널 — 선택한 버전은 좌측 본문에서 읽기 전용으로 보여준다 */}
       <DocumentHistorySidePanel
         open={historyOpen}
         documentId={documentId}
         currentTitle={data.title}
         currentUser={ownerName}
         currentUpdateTime={data.updateTime}
-        onClose={() => setHistoryOpen(false)}
-        onRestored={(restored) => {
-          setTitle(restored.title);
-          setRestoreSeq((seq) => seq + 1);
+        preview={preview}
+        isRestoring={restore.isPending}
+        onPreview={handlePreview}
+        onRestoreRequest={() => setIsRestoreConfirmOpen(true)}
+        onClose={() => {
+          handlePreview(null);
+          setHistoryOpen(false);
         }}
       />
+
+      {/* 복원 확인 */}
+      <AlertDialog open={isRestoreConfirmOpen} onOpenChange={setIsRestoreConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 버전으로 복원할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 내용도 히스토리로 남아 있고 복원 결과가 새 버전으로 기록되므로, 복원 후에도 다시 되돌릴 수 있습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={restore.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleRestore();
+              }}
+            >
+              복원
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* AI summary panel — 문서가 바뀌면 대화 문맥도 새로 시작하도록 key 로 재마운트 */}
       <AiSummaryPanel

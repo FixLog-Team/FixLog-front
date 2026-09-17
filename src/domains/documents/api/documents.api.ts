@@ -40,6 +40,24 @@ import type {
  */
 const PATH = '/api/documents';
 
+/**
+ * 서버(Editor.js) 포맷 blocks 를 클라이언트(BlockNote) 포맷으로 바꾼 사본을 돌려준다.
+ * 본문을 내려주는 응답(문서 상세·히스토리 상세·복원 결과)은 모두 이 변환을 거쳐야
+ * 에디터와 캐시가 같은 포맷의 blocks 만 다루게 된다.
+ */
+function toClientBlocks<T extends { blocks: string | null }>(dto: T): T {
+  if (!dto.blocks) return dto;
+  try {
+    const parsed = JSON.parse(dto.blocks);
+    if (Array.isArray(parsed)) {
+      return { ...dto, blocks: JSON.stringify(editorJsToBlockNote(parsed)) };
+    }
+  } catch {
+    /* 파싱 불가 시 원본 유지 */
+  }
+  return dto;
+}
+
 export const documentsApi = {
   /** 새 문서 생성. 루트 직속이면 folderId=null. */
   async create(body: CreateDocumentBody): Promise<DocumentDto> {
@@ -105,18 +123,7 @@ export const documentsApi = {
     }
 
     const res = await http.get<ApiResponse<DocumentDto>>(`${PATH}/${documentId}`);
-    const dto = unwrap(res);
-    if (dto.blocks) {
-      try {
-        const parsed = JSON.parse(dto.blocks);
-        if (Array.isArray(parsed)) {
-          return { ...dto, blocks: JSON.stringify(editorJsToBlockNote(parsed)) };
-        }
-      } catch {
-        /* 파싱 불가 시 원본 유지 */
-      }
-    }
-    return dto;
+    return toClientBlocks(unwrap(res));
   },
 
   /**
@@ -185,28 +192,18 @@ export const documentsApi = {
     const res = await http.get<ApiResponse<DocumentHistoryDetailDto>>(
       `${PATH}/${documentId}/history/${historyId}`
     );
-    const dto = unwrap(res);
-    if (dto.blocks) {
-      try {
-        const parsed = JSON.parse(dto.blocks);
-        if (Array.isArray(parsed)) {
-          return { ...dto, blocks: JSON.stringify(editorJsToBlockNote(parsed)) };
-        }
-      } catch {
-        /* 파싱 불가 시 원본 유지 */
-      }
-    }
-    return dto;
+    return toClientBlocks(unwrap(res));
   },
 
   /**
    * 특정 히스토리의 내용으로 문서를 되돌린다. 복원 결과도 서버가 새 히스토리(source=RESTORE) 항목으로
    * 남기고 기존 항목은 지우지 않으므로, 잘못 복원해도 다시 되돌릴 수 있다. 복원된 문서 전체를 반환한다.
+   * 반환값을 문서 상세 캐시에 그대로 넣을 수 있도록 상세 조회와 동일하게 blocks 를 변환한다.
    */
   async restoreHistory(documentId: string, historyId: string): Promise<DocumentDto> {
     const res = await http.post<ApiResponse<DocumentDto>>(
       `${PATH}/${documentId}/history/${historyId}/restore`
     );
-    return unwrap(res);
+    return toClientBlocks(unwrap(res));
   },
 };

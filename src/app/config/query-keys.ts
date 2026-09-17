@@ -9,6 +9,9 @@ export const QUERY_KEYS = {
     saveState: (documentId: string) => ['documents', documentId, 'save-state'] as const,
     favorites: ['documents', 'favorites'] as const,
   },
+  labels: {
+    document: (documentId: string) => ['labels', 'document', documentId] as const,
+  },
   folders: {
     all: ['folders'] as const,
     contents: (folderId: string) => ['folders', folderId, 'contents'] as const,

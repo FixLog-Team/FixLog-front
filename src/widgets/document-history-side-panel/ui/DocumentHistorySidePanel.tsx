@@ -1,25 +1,17 @@
-import { useState } from 'react';
 import { koDateTime } from '@/shared/lib/date/format';
-import { History, X, RotateCcw, PenLine, RotateCw } from 'lucide-react';
+import { History, X, RotateCcw, PenLine } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/shared/ui/alert-dialog';
 import { cn } from '@/shared/lib/utils/index';
 import { useDocumentHistories } from '@/features/documents/restore-document/hooks/use-document-histories';
-import { useDocumentHistory } from '@/features/documents/restore-document/hooks/use-document-history';
-import { useRestoreDocument } from '@/features/documents/restore-document/hooks/use-restore-document';
-import type { DocumentDto, DocumentHistorySource } from '@/domains/documents';
 
-/** 미리보기에 표시할 최대 줄 수. 패널이 좁아 앞부분만 보여준다. */
-const PREVIEW_MAX_LINES = 12;
+/** 패널이 페이지로 올려보내는 선택 버전. 페이지가 본문 미리보기와 복원에 쓴다. */
+export interface HistoryVersionRef {
+  historyId: string;
+  /** 목록에 표시되는 버전 번호(오래된 것이 1). 미리보기 배너에서도 같은 번호를 쓴다. */
+  versionNo: number;
+  title: string;
+  createTime: string | null;
+}
 
 interface DocumentHistorySidePanelProps {
   open: boolean;
@@ -28,16 +20,21 @@ interface DocumentHistorySidePanelProps {
   currentTitle: string;
   currentUser: string | null;
   currentUpdateTime: string | null;
+  /** 지금 좌측 본문에 미리보기 중인 버전. null 이면 현재 버전을 보고 있다. */
+  preview: HistoryVersionRef | null;
+  isRestoring: boolean;
+  /** 버전 선택/해제. null 이면 현재 버전으로 돌아간다. */
+  onPreview: (version: HistoryVersionRef | null) => void;
+  /** 복원 확인 대화상자를 연다(실제 복원은 페이지가 수행). */
+  onRestoreRequest: () => void;
   onClose: () => void;
-  /** 복원 성공 시 편집기 내용을 갱신하도록 페이지에 알린다. */
-  onRestored: (restored: DocumentDto) => void;
 }
 
 /**
  * 문서 에디터 우측 "버전 기록" 사이드 패널.
- * (페이지용 목록 위젯 document-history-panel 과는 별개 컴포넌트)
- * 서버 히스토리(/api/documents/{id}/history) 목록 → 선택 시 본문 미리보기 → 해당 시점으로 복원까지 처리한다.
- * 히스토리는 저장 시점의 스냅샷(최신순)이며, 문서 정보로 합성한 "현재 버전" 카드를 맨 위에 보여준다.
+ * 서버 히스토리(/api/documents/{id}/history) 목록을 최신순으로 보여주고, 선택한 버전을
+ * 페이지에 알려 좌측 본문에서 읽기 전용으로 미리보게 한다(패널 안에서는 본문을 보여주지 않는다).
+ * 히스토리는 저장 시점의 스냅샷이며, 문서 정보로 합성한 "현재 버전" 카드를 맨 위에 둔다.
  * (버전 비교(diff) UI는 1차 MVP 범위에서 제외)
  */
 export function DocumentHistorySidePanel({
@@ -46,42 +43,17 @@ export function DocumentHistorySidePanel({
   currentTitle,
   currentUser,
   currentUpdateTime,
+  preview,
+  isRestoring,
+  onPreview,
+  onRestoreRequest,
   onClose,
-  onRestored,
 }: DocumentHistorySidePanelProps) {
-  // State
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-
   // Hooks
   const history = useDocumentHistories(documentId, open);
-  const selectedVersion = useDocumentHistory(documentId, selectedId);
-  const restore = useRestoreDocument(documentId);
 
   // Variables
   const versions = history.data ?? [];
-  const previewLines = blocksToLines(selectedVersion.data?.blocks ?? null);
-
-  // Functions
-  const handleSelect = (historyId: string) => {
-    setSelectedId((current) => (current === historyId ? null : historyId));
-  };
-
-  const handleRestore = () => {
-    if (selectedId === null) return;
-    restore.mutate(selectedId, {
-      onSuccess: (restored) => {
-        setIsConfirmOpen(false);
-        setSelectedId(null);
-        onRestored(restored);
-      },
-      onError: (error) => {
-        console.error('Failed to restore document version:', error);
-        setIsConfirmOpen(false);
-        alert('복원에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-      },
-    });
-  };
 
   // Render
   if (!open) return null;
@@ -106,7 +78,17 @@ export function DocumentHistorySidePanel({
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {/* 현재 버전 — 히스토리에는 지나간 버전만 있으므로 문서 정보로 맨 위에 합성 */}
-        <div className="rounded-lg border border-primary/40 bg-accent/40 px-3 py-2.5">
+        <button
+          type="button"
+          onClick={() => onPreview(null)}
+          aria-current={preview === null}
+          className={cn(
+            'w-full rounded-lg border px-3 py-2.5 text-left transition-colors',
+            preview === null
+              ? 'border-primary/40 bg-accent/40'
+              : 'border-border hover:bg-muted'
+          )}
+        >
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-sm font-medium text-foreground">
               {currentTitle || '제목 없음'}
@@ -119,7 +101,7 @@ export function DocumentHistorySidePanel({
             {formatRelativeTime(currentUpdateTime)}
             {currentUser ? ` · ${currentUser}` : ''}
           </p>
-        </div>
+        </button>
 
         {/* 지나간 버전 목록 */}
         <div className="mt-4">
@@ -139,16 +121,27 @@ export function DocumentHistorySidePanel({
           ) : (
             <ul className="space-y-1.5">
               {versions.map((version, index) => {
-                const isSelected = version.historyId === selectedId;
-                const displayNo = versions.length - index;
+                const isSelected = version.historyId === preview?.historyId;
+                const versionNo = versions.length - index;
                 const newerTitle = index === 0 ? currentTitle : versions[index - 1].title;
                 const titleChanged = version.title !== newerTitle;
                 return (
                   <li key={version.historyId}>
                     <button
                       type="button"
-                      onClick={() => handleSelect(version.historyId)}
-                      aria-expanded={isSelected}
+                      onClick={() =>
+                        onPreview(
+                          isSelected
+                            ? null
+                            : {
+                                historyId: version.historyId,
+                                versionNo,
+                                title: version.title,
+                                createTime: version.createTime,
+                              }
+                        )
+                      }
+                      aria-current={isSelected}
                       className={cn(
                         'w-full rounded-lg border px-3 py-2.5 text-left transition-colors',
                         isSelected
@@ -162,18 +155,15 @@ export function DocumentHistorySidePanel({
                           className="text-xs font-medium text-muted-foreground"
                           title={formatAbsoluteTime(version.createTime)}
                         >
-                          <span className="mr-1.5 tabular-nums text-foreground/70">v{displayNo}</span>
+                          <span className="mr-1.5 tabular-nums text-foreground/70">v{versionNo}</span>
                           {formatRelativeTime(version.createTime)}
                         </span>
-                        <div className="flex items-center gap-1.5">
-                          {titleChanged && (
-                            <span className="flex items-center gap-0.5 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                              <PenLine className="size-3" />
-                              제목 변경
-                            </span>
-                          )}
-                          <RestoredBadge source={version.source} />
-                        </div>
+                        {titleChanged && (
+                          <span className="flex items-center gap-0.5 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                            <PenLine className="size-3" />
+                            제목 변경
+                          </span>
+                        )}
                       </div>
                       {/* 제목 */}
                       <p className="mt-1.5 truncate text-sm text-foreground">
@@ -185,35 +175,6 @@ export function DocumentHistorySidePanel({
                         </p>
                       )}
                     </button>
-
-                    {/* 선택한 버전 미리보기 */}
-                    {isSelected && (
-                      <div className="mt-1.5 rounded-lg border border-border bg-muted/50 px-3 py-2.5">
-                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                          이 시점의 본문
-                        </p>
-                        {selectedVersion.isLoading ? (
-                          <p className="text-xs text-muted-foreground">미리보기 불러오는 중…</p>
-                        ) : selectedVersion.isError ? (
-                          <p className="text-xs text-muted-foreground">
-                            미리보기를 불러오지 못했습니다.
-                          </p>
-                        ) : previewLines.length === 0 ? (
-                          <p className="text-xs italic text-muted-foreground">빈 문서</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {previewLines.map((line, index) => (
-                              <p
-                                key={index}
-                                className="truncate text-xs leading-relaxed text-foreground"
-                              >
-                                {line}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </li>
                 );
               })}
@@ -223,74 +184,16 @@ export function DocumentHistorySidePanel({
       </div>
 
       {/* Restore action */}
-      {selectedId !== null && (
+      {preview !== null && (
         <div className="border-t border-border p-4">
-          <Button
-            className="w-full"
-            disabled={restore.isPending || selectedVersion.isLoading}
-            onClick={() => setIsConfirmOpen(true)}
-          >
+          <Button className="w-full" disabled={isRestoring} onClick={onRestoreRequest}>
             <RotateCcw />
-            {restore.isPending ? '복원 중…' : '이 버전으로 복원'}
+            {isRestoring ? '복원 중…' : `v${preview.versionNo} 내용으로 복원`}
           </Button>
         </div>
       )}
-
-      {/* 복원 확인 */}
-      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>이 버전으로 복원할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              현재 내용도 히스토리로 남아 있고 복원 결과가 새 버전으로 기록되므로, 복원 후에도 다시 되돌릴 수 있습니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={restore.isPending}
-              onClick={(e) => {
-                e.preventDefault();
-                handleRestore();
-              }}
-            >
-              복원
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </aside>
   );
-}
-
-/** BlockNote 블록 JSON 문자열에서 미리보기용 텍스트 줄을 뽑는다. */
-function blocksToLines(blocksJson: string | null): string[] {
-  if (!blocksJson) return [];
-  try {
-    const parsed = JSON.parse(blocksJson);
-    if (!Array.isArray(parsed)) return [];
-    const lines: string[] = [];
-    for (const block of parsed) {
-      if (lines.length >= PREVIEW_MAX_LINES) break;
-      const text = inlineText((block as { content?: unknown })?.content).trim();
-      if (text) lines.push(text);
-    }
-    return lines;
-  } catch {
-    return [];
-  }
-}
-
-/** BlockNote inline content 배열에서 순수 텍스트만 이어붙인다. */
-function inlineText(content: unknown): string {
-  if (typeof content === 'string') return content;
-  if (!Array.isArray(content)) return '';
-  return content
-    .map((node) => {
-      const text = (node as { text?: unknown })?.text;
-      return typeof text === 'string' ? text : '';
-    })
-    .join('');
 }
 
 /** 상대 시간 표시. 최근이면 "n분 전", 오래되면 절대 시간. */
@@ -318,15 +221,4 @@ function formatAbsoluteTime(iso: string | null): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   return koDateTime(date);
-}
-
-/** 복원으로 만들어진 히스토리 배지. source=RESTORE 일 때만 표시한다. */
-function RestoredBadge({ source }: { source: DocumentHistorySource }) {
-  if (source !== 'RESTORE') return null;
-  return (
-    <span className="flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-      <RotateCw className="size-3" />
-      복원됨
-    </span>
-  );
 }
