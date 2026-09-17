@@ -4,6 +4,7 @@ import { Sparkles, ArrowUp, SquarePen } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { SearchResults } from '@/widgets/search-results';
+import { Markdown } from '@/shared/ui/markdown';
 import { useAiChat } from '@/features/ai/chat/hooks/use-ai-chat';
 import { ROUTES } from '@/shared/constants/routes';
 
@@ -139,14 +140,12 @@ export function SearchPage() {
                             답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
                           </p>
                         ) : (
-                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                            {turn.answer}
-                          </p>
+                          <Markdown>{turn.answer ?? ''}</Markdown>
                         )}
                       </div>
                     </div>
 
-                    {/* Reference cards — 근거 문서가 있을 때만 표시 */}
+                    {/* Reference cards — 근거 문서가 있을 때만 표시(개수 제한은 백엔드에서) */}
                     {turn.references.length > 0 && (
                       <div className="mt-4 pl-10">
                         <SearchResults items={turn.references} />

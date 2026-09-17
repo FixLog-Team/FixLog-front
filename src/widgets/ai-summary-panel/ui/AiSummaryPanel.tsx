@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, X, ArrowUp, FileText } from 'lucide-react';
 import { cn } from '@/shared/lib/utils/index';
+import { Markdown } from '@/shared/ui/markdown';
 import { documentDetailPath } from '@/shared/constants/routes';
 import { useAiChat } from '@/features/ai/chat/hooks/use-ai-chat';
 import type { AskReference } from '@/domains/ai';
@@ -88,11 +89,11 @@ export function AiSummaryPanel({
           <p className="text-sm leading-relaxed text-muted-foreground">
             AI 요약에 실패했습니다. 잠시 후 다시 시도해 주세요.
           </p>
+        ) : summary && summary.trim().length > 0 ? (
+          <Markdown>{summary}</Markdown>
         ) : (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-            {summary && summary.trim().length > 0
-              ? summary
-              : '요약 결과가 비어 있습니다.'}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            요약 결과가 비어 있습니다.
           </p>
         )}
 
@@ -140,9 +141,7 @@ export function AiSummaryPanel({
                             답변 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.
                           </p>
                         ) : (
-                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-                            {turn.answer}
-                          </p>
+                          <Markdown>{turn.answer ?? ''}</Markdown>
                         )}
 
                         {/* 근거 문서 — 패널이 좁아 카드 대신 링크 목록으로 압축 */}
