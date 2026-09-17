@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { labelsApi } from '@/domains/labels';
+import { QUERY_KEYS } from '@/app/config/query-keys';
 
 /**
  * 문서에 라벨 추가(없는 이름이면 서버가 생성). 성공 시 해당 문서의 라벨 조회를 무효화해
@@ -12,7 +13,7 @@ export function useAddDocumentLabel(documentId: string) {
       labelsApi.addToDocument(documentId, { labelName }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['labels', 'document', documentId],
+        queryKey: QUERY_KEYS.labels.document(documentId),
       });
     },
   });
