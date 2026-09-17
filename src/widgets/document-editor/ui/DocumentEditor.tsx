@@ -12,6 +12,8 @@ export interface DocumentEditorHandle {
 interface DocumentEditorProps {
   /** 서버 blocks(JSON 문자열)를 파싱한 BlockNote 블록 배열. 빈 문서면 undefined. */
   initialBlocks?: PartialBlock[];
+  /** false 면 읽기 전용. 과거 버전 미리보기처럼 내용을 보여주기만 할 때 쓴다. */
+  editable?: boolean;
 }
 
 /**
@@ -23,7 +25,7 @@ interface DocumentEditorProps {
 export const DocumentEditor = forwardRef<
   DocumentEditorHandle,
   DocumentEditorProps
->(function DocumentEditor({ initialBlocks }, ref) {
+>(function DocumentEditor({ initialBlocks, editable = true }, ref) {
   const editor = useCreateBlockNote({ initialContent: initialBlocks });
 
   useImperativeHandle(ref, () => ({ getBlocks: () => editor.document }), [
@@ -32,7 +34,7 @@ export const DocumentEditor = forwardRef<
 
   return (
     <div className="h-full overflow-y-auto bg-card [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12">
-      <BlockNoteView editor={editor} theme="light" />
+      <BlockNoteView editor={editor} theme="light" editable={editable} />
     </div>
   );
 });
