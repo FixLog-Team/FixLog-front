@@ -28,6 +28,10 @@ export function useAiChat(conversationId?: string) {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 현재 활성 대화방 id(반응형). 새로 생성한 대화방도 즉시 UI에 반영하기 위해 state 로 노출한다.
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(
+    conversationId ?? null,
+  );
 
   // Refs — conversationId 는 렌더링에 쓰이지 않으므로 ref 로 관리
   const conversationIdRef = useRef<string | null>(conversationId ?? null);
@@ -44,6 +48,7 @@ export function useAiChat(conversationId?: string) {
     setError(null);
     setIsLoading(false);
     conversationIdRef.current = conversationId ?? null;
+    setActiveConversationId(conversationId ?? null);
     if (!conversationId) return () => requestRef.current.abort();
 
     let cancelled = false;
@@ -79,6 +84,7 @@ export function useAiChat(conversationId?: string) {
       setIsLoading(false);
       if (isAxiosError(cause) && cause.response?.status === 404) {
         conversationIdRef.current = null;
+        setActiveConversationId(null);
         setError('현재 워크스페이스에서 접근할 수 없는 대화입니다. 새 대화를 시작해 주세요.');
       } else {
         setError('대화 기록을 불러오지 못했습니다. 다시 시도해 주세요.');
@@ -99,6 +105,7 @@ export function useAiChat(conversationId?: string) {
         const conversation = await aiApi.createConversation(title, config);
         if (!isCurrent()) throw new Error('Chat scope changed');
         conversationIdRef.current = conversation.conversationId;
+        setActiveConversationId(conversation.conversationId);
         void queryClient.invalidateQueries({ queryKey: ['ai', 'conversations', workspaceId] });
       }
       return aiApi.sendChatMessage(conversationIdRef.current, content, config);
@@ -136,6 +143,7 @@ export function useAiChat(conversationId?: string) {
         if (!isCurrent()) return;
         if (isAxiosError(cause) && cause.response?.status === 404) {
           conversationIdRef.current = null;
+          setActiveConversationId(null);
           setTurns([]);
           setError('현재 워크스페이스에서 접근할 수 없는 대화입니다. 새 대화를 시작해 주세요.');
           void queryClient.invalidateQueries({ queryKey: ['ai', 'conversations', workspaceId] });
@@ -156,10 +164,12 @@ export function useAiChat(conversationId?: string) {
     setError(null);
     setIsLoading(false);
     conversationIdRef.current = null;
+    setActiveConversationId(null);
     sendMutation.reset();
   };
 
   return {
+    conversationId: activeConversationId,
     turns,
     send,
     reset,

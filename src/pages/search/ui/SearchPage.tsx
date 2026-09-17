@@ -1,11 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Sparkles, ArrowUp, SquarePen } from 'lucide-react';
+import { Sparkles, ArrowUp, SquarePen, Trash2 } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { SearchResults } from '@/widgets/search-results';
 import { Markdown } from '@/shared/ui/markdown';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/shared/ui/alert-dialog';
 import { useAiChat } from '@/features/ai/chat/hooks/use-ai-chat';
+import { useDeleteConversation } from '@/domains/ai/hooks/use-delete-conversation';
+import { getApiErrorMessage } from '@/shared/lib/http/error-message';
 import { ROUTES } from '@/shared/constants/routes';
 
 const SUGGESTIONS = [
@@ -24,6 +36,8 @@ export function SearchPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const chat = useAiChat(conversationId);
+  const deleteConversation = useDeleteConversation();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Refs
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -72,6 +86,23 @@ export function SearchPage() {
     submit(query);
   };
 
+  // 현재 보고 있는 대화방 삭제 후 새 검색 화면으로 이동.
+  const handleDeleteConversation = () => {
+    const id = chat.conversationId;
+    if (!id) return;
+    deleteConversation.mutate(id, {
+      onSuccess: () => {
+        setDeleteOpen(false);
+        chat.reset();
+        navigate(ROUTES.SEARCH);
+      },
+      onError: (error) => {
+        setDeleteOpen(false);
+        alert(getApiErrorMessage(error, '대화방 삭제에 실패했습니다.'));
+      },
+    });
+  };
+
   // Render
   return (
     <AppShell
@@ -81,12 +112,22 @@ export function SearchPage() {
           title="AI 검색"
           action={
             hasStarted || chat.error ? (
-              <button
-                onClick={startNewChat}
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
-              >
-                <SquarePen className="size-3.5" />새 대화
-              </button>
+              <div className="flex items-center gap-2">
+                {chat.conversationId && (
+                  <button
+                    onClick={() => setDeleteOpen(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />대화 삭제
+                  </button>
+                )}
+                <button
+                  onClick={startNewChat}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
+                >
+                  <SquarePen className="size-3.5" />새 대화
+                </button>
+              </div>
             ) : undefined
           }
         />
@@ -213,6 +254,31 @@ export function SearchPage() {
           </div>
         </div>
       </div>
+
+      {/* 현재 대화방 삭제 확인 */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>대화방을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 대화방을 삭제합니다. 삭제한 대화는 복구할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteConversation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConversation();
+              }}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
