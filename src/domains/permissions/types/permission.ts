@@ -1,12 +1,15 @@
 /**
  * 권한/공유 도메인 타입. 서버 PermissionDto / ShareRequest / MyPermissionDto 와 대응 (FRONTEND_API_GUIDE 9장).
  *
- * 권한 모델(최신): permissionType(ALLOW/DENY) + canDownload. 레벨(VIEWER/EDITOR/OWNER)은 폐기됨.
- * - ALLOW: 조회 허용, DENY: 명시적 차단(상속된 ALLOW보다 우선).
+ * 권한 모델(최신): permissionType(ALLOW) + canDownload. 레벨(VIEWER/EDITOR/OWNER)은 폐기됨.
+ * - ALLOW: 조회 허용. 접근을 막으려면 공유를 취소한다(DENY 는 폐기됨).
  */
 
-/** 권한 타입. ALLOW(허용) / DENY(차단). */
-export type PermissionType = 'ALLOW' | 'DENY';
+import type { DocumentDto } from '@/domains/documents/types/document';
+import type { FolderItem } from '@/domains/folders/types/folder';
+
+/** 권한 타입. ALLOW(허용) 하나로 통일됨. */
+export type PermissionType = 'ALLOW';
 
 /** 유효 권한의 출처(my-permission / effective 응답). */
 export type PermissionSource = 'DIRECT' | 'INHERITED' | 'WORKSPACE_DEFAULT';
@@ -49,4 +52,14 @@ export interface MyPermissionDto {
   canDownload: boolean;
   source: PermissionSource;
   sourceDetail: string;
+}
+
+/**
+ * GET /api/documents/shared-with-me 응답 result.
+ * 내가 만들지 않았지만 권한을 받은 폴더·문서를 두 목록으로 나눠 반환한다
+ * (현재 워크스페이스 공유 + 다른 사용자 개인 워크스페이스에서 직접 공유받은 항목 합산).
+ */
+export interface SharedWithMeDto {
+  folders: FolderItem[];
+  documents: DocumentDto[];
 }

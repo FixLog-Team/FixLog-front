@@ -1,11 +1,11 @@
 import { http, unwrap, ensureSuccess } from '@/shared/lib/http/client';
 import type { ApiResponse } from '@/shared/types';
-import type { DocumentDto } from '@/domains/documents/types/document';
 import type {
   PermissionDto,
   ShareBody,
   ResourceKind,
   MyPermissionDto,
+  SharedWithMeDto,
 } from '@/domains/permissions/types/permission';
 
 /**
@@ -56,11 +56,15 @@ export const permissionsApi = {
     ensureSuccess(res);
   },
 
-  /** 내가 만들지 않았지만 권한을 받은 문서. */
-  async sharedWithMe(): Promise<DocumentDto[]> {
-    const res = await http.get<ApiResponse<DocumentDto[]>>(
+  /**
+   * 내가 만들지 않았지만 권한을 받은 폴더·문서.
+   * 응답 result 는 { folders, documents } 형태다(구버전 평면 배열에서 변경됨).
+   */
+  async sharedWithMe(): Promise<SharedWithMeDto> {
+    const res = await http.get<ApiResponse<SharedWithMeDto>>(
       '/api/documents/shared-with-me'
     );
-    return unwrap(res);
+    const result = unwrap(res);
+    return { folders: result?.folders ?? [], documents: result?.documents ?? [] };
   },
 };

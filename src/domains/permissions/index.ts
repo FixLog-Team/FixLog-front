@@ -7,4 +7,5 @@ export type {
   ResourceKind,
   ShareBody,
   MyPermissionDto,
+  SharedWithMeDto,
 } from '@/domains/permissions/types/permission';
