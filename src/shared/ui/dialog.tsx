@@ -16,6 +16,10 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
+    // 오버레이(바깥 회색 영역) 클릭으로 닫을 때, 클릭이 React 포털 트리를 타고 목록 행 등
+    // 조상의 onClick 으로 버블링되어 문서가 열리는 현상을 막는다. Radix 의 외부 클릭 닫기는
+    // pointerdown 기반이라 onClick 전파만 막아도 닫기는 정상 동작한다.
+    onClick={(e) => e.stopPropagation()}
     className={cn('fixed inset-0 z-50 bg-black/50', className)}
     {...props}
   />
