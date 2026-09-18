@@ -15,6 +15,13 @@ export interface DocumentDto {
   contentHash: string | null;
   ordinal: number | null;
   createUser: string | null;
+  /**
+   * 작성자 표시 이름. 상세 조회(GET /api/documents/{id})와 공유받은 문서 응답에만 포함되고
+   * 목록(GET /api/documents)·저장·제목 변경 응답에는 없다.
+   */
+  createUserName?: string | null;
+  /** 작성자 프로필 이미지. 작성자가 아직 Google 재로그인 전이면 null 일 수 있다(현재 미사용). */
+  createUserPictureUrl?: string | null;
   createTime: string | null; // ISO-8601
   updateUser: string | null;
   updateTime: string | null; // ISO-8601
