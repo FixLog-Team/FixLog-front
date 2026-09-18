@@ -268,8 +268,9 @@ export function DocumentEditorPage() {
     );
   }
 
-  // 소유자는 생성자(createUser). userId 를 구성원 목록으로 실제 이름으로 변환한다.
-  const ownerName = resolveOwner(data.createUser);
+  // 소유자는 생성자. 상세 응답의 createUserName 을 우선 쓰고(공유받은 문서·타 워크스페이스 작성자 포함),
+  // 없을 때만 구성원 목록으로 userId 를 이름으로 변환한다.
+  const ownerName = data.createUserName ?? resolveOwner(data.createUser);
   // 즐겨찾기 여부는 즐겨찾기 목록에 이 문서가 있는지로 판단.
   const isFavorite = !!favorites?.some((d) => d.documentId === documentId);
   // 삭제는 소유자(생성자) 또는 워크스페이스 관리자만.

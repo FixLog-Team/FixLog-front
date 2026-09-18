@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { AppShell } from '@/widgets/app-shell';
 import { DocumentHeader } from '@/widgets/document-header/ui/DocumentHeader';
 import { DocumentListSection } from '@/widgets/document-list-section/ui/DocumentListSection';
 import { foldersApi, useFolderTree } from '@/domains/folders';
 import type { FolderItem, FolderPathItem, FolderTreeNode } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
+import { permissionsApi } from '@/domains/permissions';
+import { useWorkspaceRole } from '@/domains/workspaces';
+import { useSession } from '@/domains/auth';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
 import { CreateFolderDialog } from '@/features/folders/create-folder/ui/CreateFolderDialog';
 import { documentDetailPath } from '@/shared/constants/routes';
@@ -33,6 +37,27 @@ export function DocumentListPage() {
   const location = useLocation();
   const createDocument = useCreateDocument();
   const { data: folderTree } = useFolderTree();
+  const { isAdmin, isPersonal } = useWorkspaceRole();
+  const { data: session } = useSession();
+  const myId = session?.userId;
+
+  // 일반 구성원의 협업 워크스페이스에서만, "명시적으로 공유되지 않은" 항목을 목록에서 숨긴다.
+  // 관리자·소유자·개인 워크스페이스는 항상 전체 접근이라 걸러낼 필요가 없다.
+  const hideUnshared = !isAdmin && !isPersonal;
+
+  // 설정 화면과 동일한 권위(shared-with-me)로 판단한다. my-permission 의 source 는 DENY 레코드가
+  // 남아 있으면 DIRECT 로 잘못 잡혀 신뢰할 수 없으므로, "내게 실제로 공유된 목록"을 기준으로 필터링한다.
+  const sharedQuery = useQuery({
+    queryKey: ['shared-with-me'],
+    queryFn: () => permissionsApi.sharedWithMe(),
+    enabled: hideUnshared,
+  });
+  const sharedIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of sharedQuery.data?.folders ?? []) set.add(f.folderId);
+    for (const d of sharedQuery.data?.documents ?? []) set.add(d.documentId);
+    return set;
+  }, [sharedQuery.data]);
 
   // State
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -52,6 +77,7 @@ export function DocumentListPage() {
       const result = folderId
         ? await foldersApi.getFolderContents(folderId)
         : await foldersApi.getRootContents();
+      // 원본 그대로 보관하고, 노출 필터는 렌더 단계에서 shared-with-me 기준으로 적용한다.
       setFolders(result.folders);
       setDocuments(result.documents);
     } catch (error) {
@@ -144,6 +170,18 @@ export function DocumentListPage() {
     })),
   ];
 
+  // 노출 필터(일반 구성원·협업 워크스페이스): 내게 명시적으로 공유된 것(shared-with-me)만 보인다.
+  // - 내가 만든 항목은 항상 표시(생성자 보호)
+  // - 공유받은 폴더 안(현재 경로에 공유 폴더가 포함)에 들어와 있으면 그 하위는 모두 표시(폴더 공유 상속)
+  const insideSharedScope = breadcrumb.some((b) => sharedIds.has(b.folderId));
+  const isVisible = (id: string, createUser: string | null) =>
+    !hideUnshared ||
+    (!!myId && createUser === myId) ||
+    insideSharedScope ||
+    sharedIds.has(id);
+  const visibleFolders = folders.filter((f) => isVisible(f.folderId, f.createUser));
+  const visibleDocuments = documents.filter((d) => isVisible(d.documentId, d.createUser));
+
   // Render
   return (
     <AppShell
@@ -157,8 +195,8 @@ export function DocumentListPage() {
       }
     >
       <DocumentListSection
-        folders={folders}
-        documents={documents}
+        folders={visibleFolders}
+        documents={visibleDocuments}
         isLoading={isLoading}
         onFolderClick={handleFolderClick}
         onDocumentClick={handleDocumentClick}

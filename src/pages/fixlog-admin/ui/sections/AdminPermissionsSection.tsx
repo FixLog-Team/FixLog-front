@@ -248,24 +248,32 @@ function ResourcePermissionPanel({
     grants.filter((g) => g.principalType === 'USER').map((g) => [g.principalId, g])
   );
 
-  // Functions — 스위치/다운로드 변경 시 부여 또는 수정. 부여는 principalId(UUID)로 직접.
-  const setAccess = (member: AdminUser, allow: boolean) => {
+  // Functions — 공유(직접 ALLOW 권한) 부여/취소. 접근 차단은 DENY 가 아니라 공유 취소(회수)로 한다.
+  // (서버가 DENY 를 강제하지 않으므로 접근을 없애려면 직접 권한을 회수해야 한다.)
+  const setShared = (member: AdminUser, shared: boolean) => {
     const existing = grantByUser.get(member.userId);
-    const permissionType: AdminPermissionType = allow ? 'ALLOW' : 'DENY';
-    if (existing) {
-      updatePerm.mutate({
-        permissionId: existing.permissionId,
-        body: { permissionType, canDownload: allow ? existing.canDownload : false },
-      });
-    } else {
-      grant.mutate({
-        resourceType,
-        resourceId: selected.id,
-        principalType: 'USER',
-        principalId: member.userId,
-        permissionType,
-        canDownload: allow,
-      });
+    if (shared) {
+      if (existing) {
+        // 레거시 DENY 레코드가 남아 있으면 ALLOW 로 정정한다(공유 = 항상 ALLOW).
+        if (existing.permissionType !== 'ALLOW') {
+          updatePerm.mutate({
+            permissionId: existing.permissionId,
+            body: { permissionType: 'ALLOW', canDownload: existing.canDownload },
+          });
+        }
+      } else {
+        grant.mutate({
+          resourceType,
+          resourceId: selected.id,
+          principalType: 'USER',
+          principalId: member.userId,
+          permissionType: 'ALLOW',
+          canDownload: true,
+        });
+      }
+    } else if (existing) {
+      // 공유 취소 = 직접 권한 회수. (상속·기본값으로 열린 접근은 폴더 설정에서 조정)
+      remove.mutate(existing.permissionId);
     }
   };
 
@@ -275,8 +283,6 @@ function ResourcePermissionPanel({
       body: { permissionType: g.permissionType, canDownload },
     });
   };
-
-  const clearAccess = (g: AdminPermission) => remove.mutate(g.permissionId);
 
   const isBusy = grant.isPending || updatePerm.isPending || remove.isPending;
 
@@ -358,7 +364,7 @@ function ResourcePermissionPanel({
             {members.map((m) => {
               const g = grantByUser.get(m.userId);
               const privileged = m.role === 'ADMIN' || m.role === 'OWNER';
-              const allow = g?.permissionType === 'ALLOW';
+              const shared = g?.permissionType === 'ALLOW';
               return (
                 <li key={m.userId} className="flex items-center gap-3 px-5 py-3">
                   <Avatar name={m.userName} size="sm" />
@@ -377,59 +383,45 @@ function ResourcePermissionPanel({
                     </span>
                   ) : (
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      {/* 접근 권한: 허용/차단 텍스트 + 스위치(허용 초록 / 차단 빨강) */}
+                      {/* 공유(직접 권한): 켜면 부여(ALLOW), 끄면 공유 취소(회수). */}
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">접근 권한</span>
+                        <span className="text-xs text-muted-foreground">공유</span>
                         <span
                           className={cn(
-                            'w-8 text-right text-xs',
-                            allow ? 'text-success' : 'text-destructive'
+                            'w-14 text-right text-xs',
+                            shared ? 'text-success' : 'text-muted-foreground'
                           )}
                         >
-                          {allow ? '허용' : '차단'}
+                          {shared ? '공유됨' : '공유 안 함'}
                         </span>
                         <Switch
-                          checked={allow}
+                          checked={shared}
                           tone="success"
-                          offTone="destructive"
                           disabled={isBusy}
-                          onCheckedChange={(v) => setAccess(m, v)}
-                          aria-label={`${m.userName} 접근 권한`}
+                          onCheckedChange={(v) => setShared(m, v)}
+                          aria-label={`${m.userName} 공유`}
                         />
                       </div>
 
-                      {/* 다운로드 권한: 허용/차단 텍스트 + 스위치. 접근이 허용일 때만 조작 가능. */}
-                      <div className={cn('flex items-center gap-2', !allow && 'opacity-50')}>
-                        <span className="text-xs text-muted-foreground">다운로드 권한</span>
+                      {/* 다운로드 권한: 공유된 경우에만 조작 가능. */}
+                      <div className={cn('flex items-center gap-2', !shared && 'opacity-50')}>
+                        <span className="text-xs text-muted-foreground">다운로드</span>
                         <span
                           className={cn(
-                            'w-8 text-right text-xs',
-                            allow && g?.canDownload ? 'text-success' : 'text-destructive'
+                            'w-14 text-right text-xs',
+                            shared && g?.canDownload ? 'text-success' : 'text-muted-foreground'
                           )}
                         >
-                          {allow && g?.canDownload ? '허용' : '차단'}
+                          {shared && g?.canDownload ? '허용' : '금지'}
                         </span>
                         <Switch
-                          checked={!!(allow && g?.canDownload)}
+                          checked={!!(shared && g?.canDownload)}
                           tone="success"
-                          offTone="destructive"
-                          disabled={!allow || !g || isBusy}
+                          disabled={!shared || !g || isBusy}
                           onCheckedChange={(v) => g && setDownload(g, v)}
-                          aria-label={`${m.userName} 다운로드 권한`}
+                          aria-label={`${m.userName} 다운로드`}
                         />
                       </div>
-
-                      {/* 미설정으로 되돌리기(직접 권한 삭제) */}
-                      {g && (
-                        <button
-                          type="button"
-                          onClick={() => clearAccess(g)}
-                          disabled={isBusy}
-                          className="text-[11px] text-muted-foreground hover:text-destructive"
-                        >
-                          미설정으로 되돌리기
-                        </button>
-                      )}
                     </div>
                   )}
                 </li>
@@ -438,8 +430,9 @@ function ResourcePermissionPanel({
           </ul>
         )}
         <p className="border-t border-border p-4 text-xs text-muted-foreground">
-          스위치로 구성원별 <b>허용/차단</b>을 바로 설정합니다. 차단(DENY)은 상속으로 열린 접근보다 우선합니다.
-          관리자·소유자는 특권으로 항상 전체 접근이라 설정 대상이 아닙니다. &quot;미설정&quot;은 직접 권한을 지워 상속·기본값을 따르게 합니다.
+          <b>공유</b> 스위치로 구성원에게 직접 접근을 부여(ALLOW)하거나 취소(회수)합니다. 접근을 막으려면 공유를 취소하세요.
+          다만 <b>상위 폴더 상속</b>이나 <b>기본 접근(baseAccess)</b>으로 열려 있으면 공유를 취소해도 여전히 접근될 수 있으며, 이때는 폴더 설정에서 조정합니다.
+          관리자·소유자는 특권으로 항상 전체 접근이라 설정 대상이 아닙니다.
         </p>
         </>
         )}
