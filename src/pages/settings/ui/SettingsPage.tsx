@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, LogOut, Trash2, Share2, FileText, X } from 'lucide-react';
+import { ShieldCheck, LogOut, Trash2, Share2, FileText, Folder, ChevronRight, X } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { Card } from '@/shared/ui/card';
@@ -25,11 +25,15 @@ import { permissionsApi } from '@/domains/permissions';
 import type { PermissionDto } from '@/domains/permissions';
 import { documentsApi } from '@/domains/documents';
 import type { DocumentDto } from '@/domains/documents';
+import { foldersApi } from '@/domains/folders';
+import type { FolderItem, FolderPathItem } from '@/domains/folders';
+import { cn } from '@/shared/lib/utils/index';
 import {
   useWorkspaces,
   useSecurityPolicy,
   useLeaveWorkspace,
   useDeleteWorkspace,
+  useOwnerName,
 } from '@/domains/workspaces';
 import type { Workspace } from '@/domains/workspaces';
 
@@ -132,7 +136,15 @@ function SharedResourcesCard() {
     },
   });
 
-  const receivedItems = received.data ?? [];
+  // 공유받은 폴더는 트리로 표시하고, 그 폴더에 속한 문서는 폴더를 펼쳤을 때 안에서 보이게 한다.
+  // 반면 폴더가 없거나(folderId=null) 부모 폴더가 공유 목록에 없는(외부 공유) 문서는
+  // 트리에 자리가 없으므로 수정 전처럼 루트에 따로 표시한다.
+  const receivedFolders = received.data?.folders ?? [];
+  const sharedFolderIds = new Set(receivedFolders.map((f) => f.folderId));
+  const rootDocuments = (received.data?.documents ?? []).filter(
+    (d) => d.folderId === null || !sharedFolderIds.has(d.folderId),
+  );
+  const receivedCount = receivedFolders.length + rootDocuments.length;
   const sharedItems = sharedByMe.data ?? [];
 
   return (
@@ -142,24 +154,39 @@ function SharedResourcesCard() {
         공유
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        내가 공유했거나 공유받은 문서를 확인합니다.
+        내가 공유했거나 공유받은 폴더·문서를 확인합니다.
       </p>
 
-      {/* 공유받은 문서 */}
+      {/* 공유받은 폴더·문서 */}
       <div className="mt-5">
-        <h3 className="text-sm font-medium text-foreground">공유받은 문서</h3>
+        <h3 className="text-sm font-medium text-foreground">공유받은 폴더·문서</h3>
         {received.isLoading ? (
           <p className="mt-2 text-sm text-muted-foreground">불러오는 중…</p>
         ) : received.isError ? (
-          <p className="mt-2 text-sm text-muted-foreground">공유받은 문서를 불러올 수 없습니다.</p>
-        ) : receivedItems.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">공유받은 문서가 없습니다.</p>
+          <p className="mt-2 text-sm text-muted-foreground">공유받은 항목을 불러올 수 없습니다.</p>
+        ) : receivedCount === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">공유받은 폴더·문서가 없습니다.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border">
-            {receivedItems.map((d) => (
-              <SharedRow key={d.documentId} doc={d} />
+          <div className="mt-2 overflow-hidden rounded-lg border border-border">
+            {receivedFolders.map((f) => (
+              <SharedFolderNode
+                key={f.folderId}
+                folder={f}
+                depth={0}
+                path={[{ folderId: f.folderId, folderName: f.folderName }]}
+              />
             ))}
-          </ul>
+            {rootDocuments.map((d) => (
+              <SharedDocRow
+                key={d.documentId}
+                documentId={d.documentId}
+                title={d.title}
+                createUser={d.createUser}
+                createUserName={d.createUserName}
+                depth={0}
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -195,9 +222,9 @@ function SharedResourcesCard() {
                           <span className="ml-1 text-muted-foreground">(그룹)</span>
                         )}
                       </span>
-                      <span className={g.permissionType === 'DENY' ? 'text-destructive' : 'text-success'}>
-                        {g.permissionType === 'DENY' ? '차단' : '허용'}
-                        {g.permissionType === 'ALLOW' && !g.canDownload && ' · 반출금지'}
+                      <span className="text-success">
+                        허용
+                        {!g.canDownload && ' · 반출금지'}
                       </span>
                       <button
                         type="button"
@@ -224,17 +251,166 @@ function SharedResourcesCard() {
   );
 }
 
-function SharedRow({ doc }: { doc: DocumentDto }) {
+/** 트리 들여쓰기(깊이별 좌측 여백). 토글 버튼 자리(size-5=20px)만큼 하위가 밀려 정렬된다. */
+const treeIndent = (depth: number) => 12 + depth * 20;
+
+/**
+ * 공유받은 폴더 트리 노드. 좌측 토글(▶/▼) 버튼 또는 행의 빈 곳을 누르면 펼침/접힘이 되고,
+ * 폴더 이름을 누르면 문서 목록 화면에서 해당 폴더를 연다(진입 경로를 state 로 전달).
+ * 펼칠 때만 GET /api/folders/{id}/contents 로 하위 폴더·문서를 지연 로드한다.
+ */
+function SharedFolderNode({
+  folder,
+  depth,
+  path,
+}: {
+  folder: FolderItem;
+  depth: number;
+  path: FolderPathItem[];
+}) {
+  // State
+  const [expanded, setExpanded] = useState(false);
+
+  // Hooks — 펼친 뒤에만 콘텐츠를 조회한다.
+  const navigate = useNavigate();
+  const contents = useQuery({
+    queryKey: ['shared-folder-contents', folder.folderId],
+    queryFn: () => foldersApi.getFolderContents(folder.folderId),
+    enabled: expanded,
+  });
+
+  // Variables
+  const childFolders = contents.data?.folders ?? [];
+  const childDocs = contents.data?.documents ?? [];
+  const isEmpty = childFolders.length === 0 && childDocs.length === 0;
+
+  // Functions
+  const toggle = () => setExpanded((v) => !v);
+  // 폴더 이름 클릭: 문서 목록으로 이동하며 이 폴더까지의 경로를 함께 넘겨 그 폴더를 연다.
+  const openFolder = () => navigate(ROUTES.DOCUMENTS, { state: { folderPath: path } });
+
+  // Render
   return (
-    <li className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/40">
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggle();
+          }
+        }}
+        aria-expanded={expanded}
+        className="flex cursor-pointer items-center gap-2 py-2.5 pr-3 hover:bg-muted/40"
+        style={{ paddingLeft: treeIndent(depth) }}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle();
+          }}
+          aria-label={expanded ? '접기' : '펼치기'}
+          className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronRight className={cn('size-4 transition-transform', expanded && 'rotate-90')} />
+        </button>
+        <Folder className="size-4 shrink-0 text-muted-foreground" />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openFolder();
+          }}
+          className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:underline"
+        >
+          {folder.folderName || '이름 없는 폴더'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div>
+          {contents.isLoading ? (
+            <p className="py-2 text-xs text-muted-foreground" style={{ paddingLeft: treeIndent(depth + 1) }}>
+              불러오는 중…
+            </p>
+          ) : contents.isError ? (
+            <p className="py-2 text-xs text-muted-foreground" style={{ paddingLeft: treeIndent(depth + 1) }}>
+              폴더 내용을 불러올 수 없습니다.
+            </p>
+          ) : isEmpty ? (
+            <p className="py-2 text-xs text-muted-foreground" style={{ paddingLeft: treeIndent(depth + 1) }}>
+              빈 폴더입니다.
+            </p>
+          ) : (
+            <>
+              {childFolders.map((f) => (
+                <SharedFolderNode
+                  key={f.folderId}
+                  folder={f}
+                  depth={depth + 1}
+                  path={[...path, { folderId: f.folderId, folderName: f.folderName }]}
+                />
+              ))}
+              {childDocs.map((d) => (
+                <SharedDocRow
+                  key={d.documentId}
+                  documentId={d.documentId}
+                  title={d.title}
+                  createUser={d.createUser}
+                  createUserName={d.createUserName}
+                  depth={depth + 1}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 트리의 문서 리프. 토글 버튼 자리만큼 빈 여백을 두어 상위 폴더명과 아이콘이 정렬되게 한다.
+ * 작성자는 응답의 createUserName 을 우선 쓰고(공유받은 문서 응답에만 포함), 없으면
+ * createUser(userId)를 구성원 목록으로 이름 변환한다(폴더 콘텐츠 문서에는 createUserName 이 없음).
+ */
+function SharedDocRow({
+  documentId,
+  title,
+  createUser,
+  createUserName,
+  depth,
+}: {
+  documentId: string;
+  title: string;
+  createUser?: string | null;
+  createUserName?: string | null;
+  depth: number;
+}) {
+  const resolveOwner = useOwnerName();
+  const resolved = createUserName ?? resolveOwner(createUser);
+  const author = resolved && resolved !== '—' ? resolved : null;
+
+  return (
+    <div
+      className="flex items-center gap-2 py-2.5 pr-3 hover:bg-muted/40"
+      style={{ paddingLeft: treeIndent(depth) }}
+    >
+      <span className="size-5 shrink-0" aria-hidden />
       <FileText className="size-4 shrink-0 text-muted-foreground" />
       <Link
-        to={documentDetailPath(doc.documentId)}
+        to={documentDetailPath(documentId)}
         className="min-w-0 flex-1 truncate text-sm text-foreground hover:underline"
       >
-        {doc.title || '제목 없음'}
+        {title || '제목 없음'}
       </Link>
-    </li>
+      {author && (
+        <span className="shrink-0 text-xs text-muted-foreground">작성자 · {author}</span>
+      )}
+    </div>
   );
 }
 
