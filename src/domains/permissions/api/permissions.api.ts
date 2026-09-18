@@ -67,4 +67,16 @@ export const permissionsApi = {
     const result = unwrap(res);
     return { folders: result?.folders ?? [], documents: result?.documents ?? [] };
   },
+
+  /**
+   * 내가 다른 사용자에게 공유한 폴더·문서. 같은 리소스를 여러 명에게 공유해도 한 번만 반환한다.
+   * 응답 형식은 shared-with-me 와 동일한 { folders, documents } 다.
+   */
+  async sharedByMe(): Promise<SharedWithMeDto> {
+    const res = await http.get<ApiResponse<SharedWithMeDto>>(
+      '/api/documents/shared-by-me'
+    );
+    const result = unwrap(res);
+    return { folders: result?.folders ?? [], documents: result?.documents ?? [] };
+  },
 };

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, LogOut, Trash2, Share2, FileText, Folder, ChevronRight, X } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { ShieldCheck, LogOut, Trash2, Share2, FileText, Folder, ChevronRight } from 'lucide-react';
 import { AppShell } from '@/widgets/app-shell';
 import { PageHeader } from '@/shared/ui/page-header';
 import { Card } from '@/shared/ui/card';
@@ -20,11 +21,8 @@ import {
 import { workspaceStorage } from '@/shared/lib/workspace/workspace-storage';
 import { getApiErrorMessage } from '@/shared/lib/http/error-message';
 import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
-import { useSession } from '@/domains/auth';
 import { permissionsApi } from '@/domains/permissions';
-import type { PermissionDto } from '@/domains/permissions';
-import { documentsApi } from '@/domains/documents';
-import type { DocumentDto } from '@/domains/documents';
+import type { SharedWithMeDto } from '@/domains/permissions';
 import { foldersApi } from '@/domains/folders';
 import type { FolderItem, FolderPathItem } from '@/domains/folders';
 import { cn } from '@/shared/lib/utils/index';
@@ -89,63 +87,20 @@ export function SettingsPage() {
 }
 
 /**
- * 공유 — 공유받은 문서(shared-with-me)와 내가 공유한 문서를 확인·회수한다.
- * "내가 공유한 목록" 전용 API 가 없어, 내 문서(최근 50개)의 권한을 조회해 도출한다(임시).
- * 회수는 DELETE /api/documents/{id}/permissions/{permissionId}.
+ * 공유 — 공유받은 폴더·문서(shared-with-me)와 내가 공유한 폴더·문서(shared-by-me)를 확인한다.
+ * 두 API 모두 { folders, documents } 응답이라 동일한 트리(SharedTreeSection)로 표시한다.
+ * (공유 회수는 각 리소스의 공유 대화상자에서 수행한다)
  */
 function SharedResourcesCard() {
   // Hooks
-  const { data: session } = useSession();
-  const myId = session?.userId;
-  const queryClient = useQueryClient();
-
   const received = useQuery({
     queryKey: ['shared-with-me'],
     queryFn: () => permissionsApi.sharedWithMe(),
   });
-
   const sharedByMe = useQuery({
-    queryKey: ['shared-by-me', myId],
-    enabled: !!myId,
-    queryFn: async () => {
-      const page = await documentsApi.list({ size: 50 });
-      const mine = page.items.filter((d) => d.createUser === myId);
-      const results = await Promise.all(
-        mine.map(async (d) => {
-          try {
-            const perms = await permissionsApi.list('document', d.documentId);
-            const grants = perms.filter((p) => p.principalId !== myId);
-            return grants.length > 0 ? { doc: d, grants } : null;
-          } catch {
-            return null; // 소유자 아님 등 조회 불가는 건너뛴다.
-          }
-        })
-      );
-      return results.filter(
-        (x): x is { doc: DocumentDto; grants: PermissionDto[] } => x !== null
-      );
-    },
+    queryKey: ['shared-by-me'],
+    queryFn: () => permissionsApi.sharedByMe(),
   });
-
-  const revoke = useMutation({
-    mutationFn: ({ docId, permissionId }: { docId: string; permissionId: string }) =>
-      permissionsApi.revoke('document', docId, permissionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['shared-by-me'] });
-      queryClient.invalidateQueries({ queryKey: ['shared-with-me'] });
-    },
-  });
-
-  // 공유받은 폴더는 트리로 표시하고, 그 폴더에 속한 문서는 폴더를 펼쳤을 때 안에서 보이게 한다.
-  // 반면 폴더가 없거나(folderId=null) 부모 폴더가 공유 목록에 없는(외부 공유) 문서는
-  // 트리에 자리가 없으므로 수정 전처럼 루트에 따로 표시한다.
-  const receivedFolders = received.data?.folders ?? [];
-  const sharedFolderIds = new Set(receivedFolders.map((f) => f.folderId));
-  const rootDocuments = (received.data?.documents ?? []).filter(
-    (d) => d.folderId === null || !sharedFolderIds.has(d.folderId),
-  );
-  const receivedCount = receivedFolders.length + rootDocuments.length;
-  const sharedItems = sharedByMe.data ?? [];
 
   return (
     <Card className="p-6">
@@ -160,94 +115,83 @@ function SharedResourcesCard() {
       {/* 공유받은 폴더·문서 */}
       <div className="mt-5">
         <h3 className="text-sm font-medium text-foreground">공유받은 폴더·문서</h3>
-        {received.isLoading ? (
-          <p className="mt-2 text-sm text-muted-foreground">불러오는 중…</p>
-        ) : received.isError ? (
-          <p className="mt-2 text-sm text-muted-foreground">공유받은 항목을 불러올 수 없습니다.</p>
-        ) : receivedCount === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">공유받은 폴더·문서가 없습니다.</p>
-        ) : (
-          <div className="mt-2 overflow-hidden rounded-lg border border-border">
-            {receivedFolders.map((f) => (
-              <SharedFolderNode
-                key={f.folderId}
-                folder={f}
-                depth={0}
-                path={[{ folderId: f.folderId, folderName: f.folderName }]}
-              />
-            ))}
-            {rootDocuments.map((d) => (
-              <SharedDocRow
-                key={d.documentId}
-                documentId={d.documentId}
-                title={d.title}
-                createUser={d.createUser}
-                createUserName={d.createUserName}
-                depth={0}
-              />
-            ))}
-          </div>
-        )}
+        <SharedTreeSection
+          query={received}
+          emptyText="공유받은 폴더·문서가 없습니다."
+          errorText="공유받은 항목을 불러올 수 없습니다."
+        />
       </div>
 
-      {/* 내가 공유한 문서 */}
+      {/* 내가 공유한 폴더·문서 */}
       <div className="mt-5">
-        <h3 className="text-sm font-medium text-foreground">내가 공유한 문서</h3>
-        {sharedByMe.isLoading ? (
-          <p className="mt-2 text-sm text-muted-foreground">불러오는 중…</p>
-        ) : sharedByMe.isError ? (
-          <p className="mt-2 text-sm text-muted-foreground">공유 현황을 불러올 수 없습니다.</p>
-        ) : sharedItems.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">다른 사용자에게 공유한 문서가 없습니다.</p>
-        ) : (
-          <ul className="mt-2 space-y-2">
-            {sharedItems.map(({ doc, grants }) => (
-              <li key={doc.documentId} className="rounded-lg border border-border p-3">
-                <div className="flex items-center gap-2.5">
-                  <FileText className="size-4 shrink-0 text-muted-foreground" />
-                  <Link
-                    to={documentDetailPath(doc.documentId)}
-                    className="min-w-0 flex-1 truncate text-sm font-medium text-foreground hover:underline"
-                  >
-                    {doc.title || '제목 없음'}
-                  </Link>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">{grants.length}명</span>
-                </div>
-                <ul className="mt-2 space-y-1 pl-6">
-                  {grants.map((g) => (
-                    <li key={g.permissionId} className="flex items-center gap-2 text-xs">
-                      <span className="min-w-0 flex-1 truncate text-foreground">
-                        {g.principalName ?? g.principalId}
-                        {g.principalType === 'GROUP' && (
-                          <span className="ml-1 text-muted-foreground">(그룹)</span>
-                        )}
-                      </span>
-                      <span className="text-success">
-                        허용
-                        {!g.canDownload && ' · 반출금지'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => revoke.mutate({ docId: doc.documentId, permissionId: g.permissionId })}
-                        disabled={revoke.isPending}
-                        aria-label={`${g.principalName ?? '대상'} 공유 회수`}
-                        className="inline-flex shrink-0 items-center gap-0.5 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="size-3.5" />
-                        회수
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3 className="text-sm font-medium text-foreground">내가 공유한 폴더·문서</h3>
+        <SharedTreeSection
+          query={sharedByMe}
+          emptyText="다른 사용자에게 공유한 폴더·문서가 없습니다."
+          errorText="공유 현황을 불러올 수 없습니다."
+        />
         <p className="mt-2 text-[11px] text-muted-foreground">
-          최근 문서 기준으로, 다른 사용자에게 권한을 부여한 문서만 표시합니다.
+          공유 회수는 각 문서·폴더의 공유 버튼(공유 대화상자)에서 할 수 있어요.
         </p>
       </div>
     </Card>
+  );
+}
+
+/**
+ * 공유받은/내가 공유한 목록을 동일한 트리로 그린다.
+ * 폴더는 토글로 펼치는 노드, 폴더에 속하지 않은(또는 목록에 폴더가 없는) 문서는 루트 리프로 표시한다.
+ */
+function SharedTreeSection({
+  query,
+  emptyText,
+  errorText,
+}: {
+  query: UseQueryResult<SharedWithMeDto>;
+  emptyText: string;
+  errorText: string;
+}) {
+  if (query.isLoading) {
+    return <p className="mt-2 text-sm text-muted-foreground">불러오는 중…</p>;
+  }
+  if (query.isError) {
+    return <p className="mt-2 text-sm text-muted-foreground">{errorText}</p>;
+  }
+
+  const folders = query.data?.folders ?? [];
+  const documents = query.data?.documents ?? [];
+  if (folders.length === 0 && documents.length === 0) {
+    return <p className="mt-2 text-sm text-muted-foreground">{emptyText}</p>;
+  }
+
+  // 폴더에 속한 문서는 폴더를 펼쳤을 때 안에서 보이므로, 루트에는 폴더가 없거나
+  // 부모 폴더가 목록에 없는(외부) 문서만 리프로 표시한다.
+  const folderIds = new Set(folders.map((f) => f.folderId));
+  const rootDocuments = documents.filter(
+    (d) => d.folderId === null || !folderIds.has(d.folderId),
+  );
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-border">
+      {folders.map((f) => (
+        <SharedFolderNode
+          key={f.folderId}
+          folder={f}
+          depth={0}
+          path={[{ folderId: f.folderId, folderName: f.folderName }]}
+        />
+      ))}
+      {rootDocuments.map((d) => (
+        <SharedDocRow
+          key={d.documentId}
+          documentId={d.documentId}
+          title={d.title}
+          createUser={d.createUser}
+          createUserName={d.createUserName}
+          depth={0}
+        />
+      ))}
+    </div>
   );
 }
 
