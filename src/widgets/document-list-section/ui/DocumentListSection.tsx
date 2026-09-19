@@ -4,7 +4,6 @@ import { koDateTime } from '@/shared/lib/date/format';
 import {
   Search,
   SlidersHorizontal,
-  ArrowUpDown,
   Sparkles,
   Folder,
   FileText,
@@ -92,7 +91,7 @@ export function DocumentListSection({
           <DropdownMenuTrigger asChild>
             <Button
               variant={onlyFavorites ? 'default' : 'secondary'}
-              className="h-11"
+              className="h-11 w-40"
             >
               <SlidersHorizontal />
               필터
@@ -107,10 +106,6 @@ export function DocumentListSection({
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="secondary" className="h-11">
-          <ArrowUpDown />
-          정렬
-        </Button>
       </div>
 
       {/* AI Search hint banner */}
