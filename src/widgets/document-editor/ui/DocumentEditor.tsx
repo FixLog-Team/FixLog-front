@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import '@blocknote/shadcn/style.css';
@@ -27,13 +27,26 @@ export const DocumentEditor = forwardRef<
   DocumentEditorProps
 >(function DocumentEditor({ initialBlocks, editable = true }, ref) {
   const editor = useCreateBlockNote({ initialContent: initialBlocks });
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({ getBlocks: () => editor.document }), [
     editor,
   ]);
 
+  // BlockNote 사이드 메뉴(+ / 드래그 핸들)는 hover 한 블록에 붙어 스크롤 시 그대로 따라다녀
+  // 어색하게 남는다. 스크롤 중에는 숨기고(is-scrolling), 다음 마우스 이동(hover) 때 다시 보이게 한다.
+  const hideSideMenuWhileScrolling = () =>
+    scrollRef.current?.classList.add('is-scrolling');
+  const restoreSideMenuOnMove = () =>
+    scrollRef.current?.classList.remove('is-scrolling');
+
   return (
-    <div className="h-full overflow-y-auto bg-card [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12">
+    <div
+      ref={scrollRef}
+      onScroll={hideSideMenuWhileScrolling}
+      onMouseMove={restoreSideMenuOnMove}
+      className="h-full overflow-y-auto bg-card [&.is-scrolling_.bn-side-menu]:!hidden [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12"
+    >
       <BlockNoteView editor={editor} theme="light" editable={editable} />
     </div>
   );
