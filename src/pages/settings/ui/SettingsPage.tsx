@@ -94,8 +94,8 @@ export function SettingsPage() {
  */
 function SharedResourcesCard() {
   // Hooks
-  // 공유받은 목록(shared-with-me)에는 다른 사용자 개인 워크스페이스에서 받은 교차 공유가 항상 합산되어
-  // 협업 워크스페이스에서도 노출된다. 개인 워크스페이스일 때만 표시하도록 조회·렌더를 제한한다.
+  // shared-with-me / shared-by-me 는 개인 워크스페이스 교차 공유를 항상 합산해 협업 워크스페이스에서도
+  // 노출된다. 개인↔개인 공유는 개인 워크스페이스에서만 확인하도록 두 목록 모두 조회·렌더를 제한한다.
   const { isPersonal } = useWorkspaceRole();
   const received = useQuery({
     queryKey: ['shared-with-me'],
@@ -105,6 +105,7 @@ function SharedResourcesCard() {
   const sharedByMe = useQuery({
     queryKey: ['shared-by-me'],
     queryFn: () => permissionsApi.sharedByMe(),
+    enabled: isPersonal,
   });
 
   return (
@@ -129,18 +130,27 @@ function SharedResourcesCard() {
         </div>
       )}
 
-      {/* 내가 공유한 폴더·문서 */}
-      <div className="mt-5">
-        <h3 className="text-sm font-medium text-foreground">내가 공유한 폴더·문서</h3>
-        <SharedTreeSection
-          query={sharedByMe}
-          emptyText="다른 사용자에게 공유한 폴더·문서가 없습니다."
-          errorText="공유 현황을 불러올 수 없습니다."
-        />
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          공유 회수는 각 문서·폴더의 공유 버튼(공유 대화상자)에서 할 수 있어요.
+      {/* 내가 공유한 폴더·문서 — 개인 워크스페이스에서만 표시 */}
+      {isPersonal && (
+        <div className="mt-5">
+          <h3 className="text-sm font-medium text-foreground">내가 공유한 폴더·문서</h3>
+          <SharedTreeSection
+            query={sharedByMe}
+            emptyText="다른 사용자에게 공유한 폴더·문서가 없습니다."
+            errorText="공유 현황을 불러올 수 없습니다."
+          />
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            공유 회수는 각 문서·폴더의 공유 버튼(공유 대화상자)에서 할 수 있어요.
+          </p>
+        </div>
+      )}
+
+      {/* 협업 워크스페이스에서는 두 목록 모두 숨김 안내 */}
+      {!isPersonal && (
+        <p className="mt-5 text-sm text-muted-foreground">
+          공유한/공유받은 폴더·문서는 개인 워크스페이스에서 확인할 수 있어요.
         </p>
-      </div>
+      )}
     </Card>
   );
 }
