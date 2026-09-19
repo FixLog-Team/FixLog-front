@@ -22,14 +22,19 @@ interface ShareDialogProps {
   kind: ResourceKind;
   id: string;
   name: string;
+  /**
+   * 공유 부여/회수 권한 여부. 소유자(생성자) 또는 해당 워크스페이스 관리자만 true.
+   * false 면 공유 추가 폼과 회수 버튼을 숨겨(읽기 전용) 비소유자가 공유를 취소하지 못하게 한다.
+   */
+  canManage: boolean;
 }
 
 /**
  * 공유 다이얼로그(문서/폴더 공통). 현재 공유 대상 목록 + 이메일로 새 공유 부여.
  * 권한 모델(최신): ALLOW(허용) 하나로 통일 + canDownload. 접근을 막으려면 공유를 취소한다(DENY 폐기).
- * 소유자·Admin 만 공유를 볼/설정할 수 있어, 권한이 없으면 목록 조회가 실패하고 안내 문구를 보인다.
+ * 소유자·Admin 만 공유를 관리할 수 있어(canManage), 그 외에는 폼·회수 버튼을 숨긴다.
  */
-export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogProps) {
+export function ShareDialog({ open, onOpenChange, kind, id, name, canManage }: ShareDialogProps) {
   // Hooks
   const permissions = useResourcePermissions(kind, id, open);
   const share = useShareResource(kind, id);
@@ -77,7 +82,8 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
           </DialogDescription>
         </DialogHeader>
 
-        {/* 공유 추가 폼 */}
+        {/* 공유 추가 폼 — 소유자·관리자만 */}
+        {canManage && (
         <form onSubmit={handleShare} className="mt-2 space-y-2">
           <Input
             type="email"
@@ -108,6 +114,7 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
             </p>
           )}
         </form>
+        )}
 
         {/* 현재 공유 대상 */}
         <div className="mt-4">
@@ -143,18 +150,26 @@ export function ShareDialog({ open, onOpenChange, kind, id, name }: ShareDialogP
                     허용
                     {!p.canDownload && ' · 반출금지'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => revoke.mutate(p.permissionId)}
-                    aria-label={`${p.principalName} 공유 회수`}
-                    disabled={revoke.isPending}
-                    className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <X className="size-4" />
-                  </button>
+                  {/* 회수는 소유자·관리자만 */}
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => revoke.mutate(p.permissionId)}
+                      aria-label={`${p.principalName} 공유 회수`}
+                      disabled={revoke.isPending}
+                      className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
+          )}
+          {!canManage && !permissions.isError && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              공유 추가·회수는 소유자 또는 관리자만 할 수 있어요.
+            </p>
           )}
         </div>
       </DialogContent>

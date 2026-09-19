@@ -265,6 +265,7 @@ export function ItemActionsMenu({ target, onChanged, onMoved }: ItemActionsMenuP
         kind={target.kind}
         id={target.id}
         name={target.name}
+        canManage={canOwnerAction}
       />
 
       {/* 삭제 확인 */}
