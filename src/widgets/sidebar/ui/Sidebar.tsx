@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -34,7 +35,8 @@ import { useSession, authApi } from "@/domains/auth";
 import { useConversations } from "@/domains/ai/hooks/use-conversations";
 import { useDeleteConversation } from "@/domains/ai/hooks/use-delete-conversation";
 import type { AIConversation } from "@/domains/ai";
-import { useWorkspaces, workspacesApi } from "@/domains/workspaces";
+import { useWorkspaces, useWorkspaceRole, workspacesApi } from "@/domains/workspaces";
+import { permissionsApi } from "@/domains/permissions";
 import { workspaceStorage } from "@/shared/lib/workspace/workspace-storage";
 import { NameInputDialog } from "@/shared/ui/name-input-dialog";
 import {
@@ -77,6 +79,26 @@ export function Sidebar() {
   const deleteConversation = useDeleteConversation();
   const conversations = conversationPage?.items ?? [];
   const { data: workspaces } = useWorkspaces();
+  const { isAdmin, isPersonal } = useWorkspaceRole();
+
+  // 일반 구성원의 협업 워크스페이스에서는, 공유받은 폴더 + 내가 만든 폴더만 사이드바에 노출한다.
+  // (문서 페이지 목록과 동일 기준. 관리자·소유자·개인 워크스페이스는 전체 표시)
+  const hideUnshared = !isAdmin && !isPersonal;
+  const sharedQuery = useQuery({
+    queryKey: ["shared-with-me"],
+    queryFn: () => permissionsApi.sharedWithMe(),
+    enabled: hideUnshared,
+  });
+  const myId = session?.userId;
+  const visibleFolders = useMemo(() => {
+    if (!hideUnshared) return folders;
+    const sharedFolderIds = new Set(
+      (sharedQuery.data?.folders ?? []).map((f) => f.folderId),
+    );
+    return folders.filter(
+      (f) => (!!myId && f.createUser === myId) || sharedFolderIds.has(f.folderId),
+    );
+  }, [hideUnshared, folders, sharedQuery.data, myId]);
 
   // State — 팝업(폴더 생성 / 워크스페이스 생성)
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -323,7 +345,7 @@ export function Sidebar() {
           </button>
         </div>
         <div className="flex flex-col gap-0.5 overflow-y-auto">
-          {folders.map((folder) => (
+          {visibleFolders.map((folder) => (
             <Link
               key={folder.folderId}
               to={ROUTES.DOCUMENTS}
