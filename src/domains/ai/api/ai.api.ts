@@ -17,7 +17,7 @@ export function chatConfig(workspaceId = workspaceStorage.get(), signal?: AbortS
 
 /**
  * AI 기능 API.
- *   POST   /ai/documents/{documentId}/summarize          → summarizeDocument
+ *   POST   /ai/summarize                                 → summarize (본문 직접 요약)
  *   POST   /ai/ask                                       → ask (단발 질의응답)
  *   POST   /api/ai/conversations                         → createConversation
  *   GET    /api/ai/conversations                         → getConversations
@@ -29,14 +29,14 @@ export function chatConfig(workspaceId = workspaceStorage.get(), signal?: AbortS
  */
 export const aiApi = {
   /**
-   * 문서 ID 기반 요약. 서버가 DB 에서 문서 원문(plainText)을 조회해 요약한다.
-   * 본인 소유 + 삭제되지 않은(usable=1) 문서만 대상이며 요청 body 는 없다.
-   * (요약 전 최신 본문 저장을 선행해야 서버가 최신 plainText 를 요약한다)
+   * 본문 텍스트 직접 요약. 서버 DB의 plainText 대신 클라이언트가 추출한 현재 본문(content)을
+   * 그대로 보내 요약한다 → 화면에 보이는 문서 내용을 정확히 요약한다(POST /ai/summarize).
+   * (서버 plainText 추출 누락/지연에 의존하지 않기 위함)
    */
-  async summarizeDocument(documentId: string): Promise<string> {
-    const res = await http.post<ApiResponse<string>>(
-      `/ai/documents/${documentId}/summarize`
-    );
+  async summarize(content: string): Promise<string> {
+    const res = await http.post<ApiResponse<string>>('/ai/summarize', {
+      content: content.slice(0, 50000),
+    });
     return unwrap(res);
   },
 
