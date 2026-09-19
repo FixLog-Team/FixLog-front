@@ -22,7 +22,12 @@ export interface ChatTurn {
  *
  * conversationId 를 전달하면 해당 대화방의 기존 메시지를 불러온다.
  */
-export function useAiChat(conversationId?: string) {
+/**
+ * @param buildContext (선택) 첫 메시지에만 앞에 붙일 컨텍스트(예: 문서 본문+요약)를 만든다.
+ *   화면에는 질문만 표시하고, 서버로는 "컨텍스트 + 질문"을 보내 그 근거로 답하게 한다.
+ *   이후 턴은 대화 맥락(히스토리)에 컨텍스트가 남아 있어 다시 붙이지 않는다.
+ */
+export function useAiChat(conversationId?: string, buildContext?: () => string | undefined) {
   const workspaceId = workspaceStorage.get();
   // State
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -123,7 +128,11 @@ export function useAiChat(conversationId?: string) {
     const turnId = nextTurnIdRef.current++;
     setTurns((prev) => [...prev, { id: turnId, question: content, references: [] }]);
 
-    sendMutation.mutate({ content, controller }, {
+    // 새 대화방의 첫 메시지에만 컨텍스트(문서 본문+요약)를 앞에 실어 보낸다. 화면 버블엔 질문만 노출.
+    const preamble = conversationIdRef.current ? undefined : buildContext?.();
+    const apiContent = preamble ? `${preamble}\n\n[질문]\n${content}` : content;
+
+    sendMutation.mutate({ content: apiContent, controller }, {
       onSuccess: (result) => {
         if (!isCurrent()) return;
         setTurns((prev) =>

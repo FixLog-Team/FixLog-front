@@ -230,13 +230,17 @@ export function DocumentEditorPage() {
     setSummaryOpen(true);
     summarize.reset();
     suggestTags.reset();
-    // 서버가 DB 원문을 요약하므로 최신 본문 저장을 먼저 완료한다.
-    const ok = await persist();
-    if (!ok) return;
+    // 현재 편집 중인 본문을 그대로 추출해 요약·태그에 사용한다(화면의 문서 내용과 일치).
     const blocks = editorRef.current?.getBlocks();
     const content = blocks ? blocksToPlainText(blocks) : "";
+    if (!content.trim()) {
+      toast.error("요약할 본문이 없어요. 내용을 작성한 뒤 다시 시도해 주세요.");
+      return;
+    }
+    // 최신 본문을 저장해 두되, 요약은 추출한 content 로 직접 수행한다(저장 실패와 무관하게 요약 진행).
+    void persist();
     // 요약(패널)과 태그 제안(팝업)을 독립적으로 진행 — 한쪽 실패가 다른 쪽을 막지 않는다.
-    summarize.mutateAsync(documentId).catch((error) => {
+    summarize.mutateAsync(content).catch((error) => {
       console.error("AI summarize failed:", error);
     });
     if (content) {
@@ -499,6 +503,10 @@ export function DocumentEditorPage() {
         summary={summarize.data}
         isError={summarize.isError}
         onClose={() => setSummaryOpen(false)}
+        getDocumentText={() => {
+          const blocks = editorRef.current?.getBlocks();
+          return blocks ? blocksToPlainText(blocks) : '';
+        }}
       />
 
       {/* AI 추천 태그 선택 → 태그 추가 */}

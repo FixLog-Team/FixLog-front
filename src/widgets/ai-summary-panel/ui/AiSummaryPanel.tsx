@@ -13,6 +13,8 @@ interface AiSummaryPanelProps {
   summary?: string;
   isError: boolean;
   onClose: () => void;
+  /** 현재 문서 본문(plain text)을 반환. 이어서 질문 시 문서+요약을 근거로 답하도록 컨텍스트에 사용. */
+  getDocumentText?: () => string;
 }
 
 /**
@@ -28,12 +30,22 @@ export function AiSummaryPanel({
   summary,
   isError,
   onClose,
+  getDocumentText,
 }: AiSummaryPanelProps) {
   // State
   const [question, setQuestion] = useState('');
 
   // Hooks
-  const chat = useAiChat();
+  // 이어서 질문 시, 새 대화방의 첫 메시지에 현재 문서 본문 + 요약을 컨텍스트로 실어
+  // 그 문서를 근거로 답하도록 한다(이후 턴은 대화 맥락으로 유지).
+  const chat = useAiChat(undefined, () => {
+    const parts: string[] = [];
+    const doc = getDocumentText?.().trim();
+    if (doc) parts.push(`[문서 내용]\n${doc.slice(0, 15000)}`);
+    if (summary?.trim()) parts.push(`[문서 요약]\n${summary.trim()}`);
+    if (parts.length === 0) return undefined;
+    return `다음 문서와 요약을 근거로 이어지는 질문에 답해 주세요.\n\n${parts.join('\n\n')}`;
+  });
   const navigate = useNavigate();
 
   // Refs
