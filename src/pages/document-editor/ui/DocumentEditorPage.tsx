@@ -45,6 +45,7 @@ import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { toast } from "@/shared/ui/toast";
 import { ROUTES } from "@/shared/constants/routes";
 import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
+import { getApiErrorMessage, isForbiddenError } from "@/shared/lib/http/error-message";
 
 /** 폴더 트리에서 targetId 까지의 조상 경로를 찾는다(루트→대상). 없으면 null. */
 function findFolderPath(
@@ -157,14 +158,19 @@ export function DocumentEditorPage() {
       return true;
     } catch (error) {
       console.error("Failed to save document:", error);
+      // 세션 중 권한이 회수돼 저장이 거부(403)되면 원인을 명확히 안내한다.
+      toast.error(
+        isForbiddenError(error)
+          ? "편집 권한이 없어 저장할 수 없어요. 접근 권한이 변경되었을 수 있습니다."
+          : getApiErrorMessage(error, "저장에 실패했어요. 잠시 후 다시 시도해 주세요.")
+      );
       return false;
     }
   };
 
   const handleSave = async () => {
-    const ok = await persist(true);
-    // 미리보기 때문에 막힌 경우는 persist 가 이미 안내했으므로 실패 알림을 겹치지 않는다.
-    if (!ok && !preview) alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    // 실패 안내(권한 없음 등)는 persist 내부에서 토스트로 처리한다.
+    await persist(true);
   };
   // Ctrl/Cmd+S 콜백이 최신 handleSave 를 호출하도록 매 렌더 갱신.
   saveNowRef.current = handleSave;
