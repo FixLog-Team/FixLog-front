@@ -7,7 +7,7 @@ import { getApiErrorMessage } from '@/shared/lib/http/error-message';
 import { useSecurityPolicy, useUpdateSecurityPolicy } from '@/domains/workspaces';
 import type { Workspace, SecurityPolicyUpdateBody } from '@/domains/workspaces';
 import { useAdminStats } from '@/domains/admin';
-import { SectionTitle, Notice, StatusText, selectClass } from '@/pages/fixlog-admin/ui/shared';
+import { SectionTitle, StatusText, selectClass } from '@/pages/fixlog-admin/ui/shared';
 
 /** Settings — 서버가 제공하는 워크스페이스 보안 정책(편집)과 문서·폴더 현황. */
 export function AdminSettingsSection({ workspace }: { workspace: Workspace }) {
@@ -198,7 +198,6 @@ function StatsPanel({ workspaceId }: { workspaceId: string }) {
           </ul>
         )}
       </Card>
-      <Notice>기획서에 없는 항목이지만 서버가 제공하는 현황 API 를 그대로 노출했습니다.</Notice>
     </div>
   );
 }
