@@ -28,6 +28,7 @@ import type { FolderItem, FolderPathItem } from '@/domains/folders';
 import { cn } from '@/shared/lib/utils/index';
 import {
   useWorkspaces,
+  useWorkspaceRole,
   useSecurityPolicy,
   useLeaveWorkspace,
   useDeleteWorkspace,
@@ -93,9 +94,13 @@ export function SettingsPage() {
  */
 function SharedResourcesCard() {
   // Hooks
+  // 공유받은 목록(shared-with-me)에는 다른 사용자 개인 워크스페이스에서 받은 교차 공유가 항상 합산되어
+  // 협업 워크스페이스에서도 노출된다. 개인 워크스페이스일 때만 표시하도록 조회·렌더를 제한한다.
+  const { isPersonal } = useWorkspaceRole();
   const received = useQuery({
     queryKey: ['shared-with-me'],
     queryFn: () => permissionsApi.sharedWithMe(),
+    enabled: isPersonal,
   });
   const sharedByMe = useQuery({
     queryKey: ['shared-by-me'],
@@ -112,15 +117,17 @@ function SharedResourcesCard() {
         내가 공유했거나 공유받은 폴더·문서를 확인합니다.
       </p>
 
-      {/* 공유받은 폴더·문서 */}
-      <div className="mt-5">
-        <h3 className="text-sm font-medium text-foreground">공유받은 폴더·문서</h3>
-        <SharedTreeSection
-          query={received}
-          emptyText="공유받은 폴더·문서가 없습니다."
-          errorText="공유받은 항목을 불러올 수 없습니다."
-        />
-      </div>
+      {/* 공유받은 폴더·문서 — 개인 워크스페이스에서만 표시 */}
+      {isPersonal && (
+        <div className="mt-5">
+          <h3 className="text-sm font-medium text-foreground">공유받은 폴더·문서</h3>
+          <SharedTreeSection
+            query={received}
+            emptyText="공유받은 폴더·문서가 없습니다."
+            errorText="공유받은 항목을 불러올 수 없습니다."
+          />
+        </div>
+      )}
 
       {/* 내가 공유한 폴더·문서 */}
       <div className="mt-5">

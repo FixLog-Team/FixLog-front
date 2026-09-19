@@ -95,7 +95,7 @@ export function DocumentEditorPage() {
   const toggleFavorite = useToggleFavorite();
   const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
-  const { isAdmin } = useWorkspaceRole();
+  const { isAdmin, isPersonal } = useWorkspaceRole();
   const resolveOwner = useOwnerName();
   const save = useSaveDocument(documentId ?? "");
   const restore = useRestoreDocument(documentId ?? "");
@@ -276,6 +276,10 @@ export function DocumentEditorPage() {
   // 삭제는 소유자(생성자) 또는 워크스페이스 관리자만.
   const canDelete =
     isAdmin || (!!session?.userId && data.createUser === session.userId);
+  // 공유 관리(부여·회수)는 소유자 또는 협업 워크스페이스 관리자만.
+  // 개인 워크스페이스의 "관리자"(=본인)는 남의 공유 문서를 관리할 수 없으므로 isAdmin 은 협업일 때만 인정.
+  const canManageShare =
+    (!!session?.userId && data.createUser === session.userId) || (isAdmin && !isPersonal);
 
   // 진입 경로: 목록에서 넘겨준 state 우선, 없으면(새로고침/딥링크) folderId 로 트리에서 역산
   const statePath = (location.state as { folderPath?: FolderPathItem[] } | null)
@@ -507,6 +511,7 @@ export function DocumentEditorPage() {
           kind="document"
           id={documentId}
           name={title || data?.title || '문서'}
+          canManage={canManageShare}
         />
       )}
 
