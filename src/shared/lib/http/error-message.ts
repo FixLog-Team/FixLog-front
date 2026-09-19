@@ -12,3 +12,13 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+/**
+ * 권한 부족(403 FORBIDDEN) 응답인지 판별한다.
+ * 세션 중 권한이 회수돼 저장·다운로드 등이 거부되는 경우를 구분해 명확히 안내하는 데 쓴다.
+ */
+export function isForbiddenError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const data = error.response?.data as { code?: string } | undefined;
+  return error.response?.status === 403 || data?.code === 'FORBIDDEN';
+}
