@@ -124,10 +124,12 @@ export function ItemActionsMenu({ target, onChanged, onMoved }: ItemActionsMenuP
       } else {
         await moveDocument.mutateAsync({ documentId: target.id, folderId: destinationId });
       }
-      onChanged();
       close();
-      // 이동한 폴더를 열어 옮긴 항목을 그 위치에서 보여준다.
-      onMoved?.(destinationId);
+      // 이동 후에는 목적지(루트면 null)를 연다. onMoved 가 목적지 로드를 담당하므로,
+      // 현재 폴더를 다시 부르는 onChanged 와 동시에 호출하면 두 로드가 경쟁해
+      // 브레드크럼(목적지)과 리스트(현재 폴더)가 어긋난다. onMoved 가 없을 때만 현재 목록을 갱신.
+      if (onMoved) onMoved(destinationId);
+      else onChanged();
     } catch (error) {
       console.error('move failed:', error);
     }
