@@ -180,8 +180,22 @@ export function LandingPage() {
       </section>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 text-sm text-muted-foreground">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 py-6 text-sm text-muted-foreground sm:flex-row sm:justify-between">
           <Logo />
+          <nav className="flex items-center gap-5">
+            <Link
+              to={ROUTES.PRIVACY}
+              className="transition-colors hover:text-foreground"
+            >
+              개인정보처리방침
+            </Link>
+            <Link
+              to={ROUTES.ACCOUNT_DELETION}
+              className="transition-colors hover:text-foreground"
+            >
+              계정 삭제
+            </Link>
+          </nav>
           <span>© 2026 FixLog</span>
         </div>
       </footer>
