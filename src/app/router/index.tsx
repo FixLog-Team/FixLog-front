@@ -34,6 +34,21 @@ export const router = createBrowserRouter([
         Component: m.InviteResponsePage,
       })),
   },
+  // 개인정보처리방침 / 계정 삭제 안내 — Google Play 심사용 공개 페이지(로그인 불필요).
+  {
+    path: ROUTES.PRIVACY,
+    lazy: () =>
+      import('@/pages/privacy/ui/PrivacyPage').then((m) => ({
+        Component: m.PrivacyPage,
+      })),
+  },
+  {
+    path: ROUTES.ACCOUNT_DELETION,
+    lazy: () =>
+      import('@/pages/account-deletion/ui/AccountDeletionPage').then((m) => ({
+        Component: m.AccountDeletionPage,
+      })),
+  },
   // 인증 필요 라우트 (RequireAuth 가드 하위)
   {
     element: <RequireAuth />,

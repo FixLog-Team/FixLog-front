@@ -13,6 +13,10 @@ export const ROUTES = {
   INVITE: '/invite/:token',
   /** FixLog Admin(임시). 팀 워크스페이스 ADMIN/OWNER 전용. 하위 섹션은 adminPath() 로 만든다. */
   ADMIN: '/admin',
+  /** 개인정보처리방침(공개). Google Play 데이터 보안 양식에 제출하는 URL. */
+  PRIVACY: '/privacy',
+  /** 계정 및 데이터 삭제 안내(공개). Google Play 계정 삭제 URL 요건 충족용. */
+  ACCOUNT_DELETION: '/account-deletion',
 } as const;
 
 export type AdminSection = 'users' | 'permissions' | 'invitations' | 'audit-logs' | 'settings';
