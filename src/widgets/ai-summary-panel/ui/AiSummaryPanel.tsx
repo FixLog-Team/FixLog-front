@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, X, ArrowUp, FileText } from 'lucide-react';
+import { Sparkles, X, ArrowUp, FileText, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/utils/index';
 import { Markdown } from '@/shared/ui/markdown';
 import { documentDetailPath } from '@/shared/constants/routes';
@@ -218,22 +218,39 @@ function ReferenceList({
 }) {
   return (
     <ul className="mt-2.5 space-y-1">
-      {items.map((ref) => (
-        <li key={ref.documentId}>
-          <button
-            type="button"
-            onClick={() => onOpen(ref.documentId)}
-            title={ref.excerpt}
-            className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 text-left transition-colors hover:bg-muted"
-          >
-            <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate text-xs text-foreground">{ref.title}</span>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {Math.round(ref.score * 100)}%
-            </span>
-          </button>
-        </li>
-      ))}
+      {items.map((ref) => {
+        const isImage = ref.source === 'image';
+
+        return (
+          // 같은 문서가 본문·이미지 근거로 함께 걸릴 수 있어 문서 id 만으로는 키가 겹친다
+          <li key={`${ref.documentId}:${ref.source ?? 'text'}:${ref.imageId ?? ''}`}>
+            <button
+              type="button"
+              onClick={() => onOpen(ref.documentId)}
+              title={
+                isImage
+                  ? `첨부 이미지${ref.imageName ? ` (${ref.imageName})` : ''}에서 찾음\n${ref.excerpt}`
+                  : ref.excerpt
+              }
+              className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 text-left transition-colors hover:bg-muted"
+            >
+              {/* 패널이 좁아 썸네일 대신 아이콘으로만 출처를 구분한다 */}
+              {isImage ? (
+                <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
+              ) : (
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+              )}
+              <span className="min-w-0 flex-1 truncate text-xs text-foreground">{ref.title}</span>
+              {isImage && (
+                <span className="shrink-0 text-[11px] text-muted-foreground">이미지</span>
+              )}
+              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                {Math.round(ref.score * 100)}%
+              </span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
