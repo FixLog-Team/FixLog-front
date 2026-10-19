@@ -10,5 +10,6 @@ export type {
   AskBody,
   AskReference,
   AskResult,
+  ImageRef,
   ReferenceSource,
 } from '@/domains/ai/types/ai';

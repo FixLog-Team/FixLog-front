@@ -10,8 +10,18 @@ export interface AskBody {
   topK?: number;
 }
 
-/** 근거가 나온 곳. 'text' 는 문서 본문, 'image' 는 첨부 이미지를 분석한 결과. */
-export type ReferenceSource = 'text' | 'image';
+/**
+ * 근거가 나온 곳.
+ * 'text' 는 문서 본문, 'image' 는 첨부 이미지를 분석한 결과,
+ * 'mixed' 는 같은 문서에서 본문+이미지가 모두 검색된 경우.
+ */
+export type ReferenceSource = 'text' | 'image' | 'mixed';
+
+/** 검색에 걸린 이미지 한 건의 참조 정보. */
+export interface ImageRef {
+  imageId: string;
+  imageName?: string | null;
+}
 
 /** RAG 답변 근거 문서. POST /search 응답과 동일 구조(top-K 요약 정보). */
 export interface AskReference {
@@ -24,10 +34,12 @@ export interface AskReference {
   score: number;
   /** 이미지 검색 도입 전에 색인된 결과에는 없을 수 있어 선택 필드로 둔다(없으면 본문). */
   source?: ReferenceSource;
-  /** source 가 'image' 일 때만 채워진다. */
+  /** 하위 호환용. 첫 번째 이미지의 ID. */
   imageId?: string | null;
   /** 이미지 원본 파일명. */
   imageName?: string | null;
+  /** 이 문서에서 검색된 이미지 목록. 본문만 검색됐으면 빈 배열 또는 undefined. */
+  images?: ImageRef[];
 }
 
 /** POST /ai/ask 응답 result. */

@@ -14,7 +14,7 @@ interface SearchResultsProps {
  * AI 답변 근거 문서(references) 목록. 카드 클릭 시 실제 문서로 이동.
  *
  * 근거는 문서 본문에서 올 수도, 문서에 첨부된 이미지를 분석한 결과에서 올 수도 있다.
- * 이미지에서 온 발췌는 문서를 열어도 그 문장이 본문에 없으므로 출처를 분명히 표시한다.
+ * 같은 문서에서 본문+이미지가 함께 검색되면 하나의 카드로 합쳐져 내려온다(source: 'mixed').
  */
 export function SearchResults({ items }: SearchResultsProps) {
   // Hooks
@@ -26,15 +26,21 @@ export function SearchResults({ items }: SearchResultsProps) {
   return (
     <div className="space-y-4">
       {items.map((ref) => {
-        const isImage = ref.source === 'image';
+        const hasImage = ref.source === 'image' || ref.source === 'mixed';
+        const isImageOnly = ref.source === 'image';
+        // images 배열이 있으면 그것을 쓰고, 없으면 단일 imageId 로 폴백
+        const imageList = ref.images?.length
+          ? ref.images
+          : ref.imageId
+            ? [{ imageId: ref.imageId, imageName: ref.imageName }]
+            : [];
 
         return (
-          // 같은 문서가 본문·이미지 근거로 함께 걸릴 수 있어 문서 id 만으로는 키가 겹친다
-          <Card key={`${ref.documentId}:${ref.source ?? 'text'}:${ref.imageId ?? ''}`} className="p-5">
+          <Card key={ref.documentId} className="p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  {isImage ? (
+                  {isImageOnly ? (
                     <ImageIcon className="size-4 text-muted-foreground" />
                   ) : (
                     <FileText className="size-4 text-muted-foreground" />
@@ -42,9 +48,9 @@ export function SearchResults({ items }: SearchResultsProps) {
                 </span>
                 <div className="min-w-0 pt-1.5">
                   <h3 className="min-w-0 truncate font-semibold text-foreground">{ref.title}</h3>
-                  {isImage && (
+                  {hasImage && (
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      첨부 이미지{ref.imageName ? ` · ${ref.imageName}` : ''}에서 찾음
+                      첨부 이미지 포함
                     </p>
                   )}
                 </div>
@@ -54,7 +60,13 @@ export function SearchResults({ items }: SearchResultsProps) {
               </Badge>
             </div>
 
-            {isImage && ref.imageId && <EvidenceThumbnail imageId={ref.imageId} alt={ref.imageName} />}
+            {imageList.length > 0 && (
+              <div className="mt-3 flex flex-col gap-2">
+                {imageList.map((img) => (
+                  <EvidenceThumbnail key={img.imageId} imageId={img.imageId} alt={img.imageName} />
+                ))}
+              </div>
+            )}
 
             <p className="mt-3 text-sm leading-relaxed text-foreground">{ref.excerpt}</p>
 

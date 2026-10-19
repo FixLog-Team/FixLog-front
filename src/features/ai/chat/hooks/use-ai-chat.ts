@@ -23,11 +23,10 @@ export interface ChatTurn {
  * conversationId 를 전달하면 해당 대화방의 기존 메시지를 불러온다.
  */
 /**
- * @param buildContext (선택) 첫 메시지에만 앞에 붙일 컨텍스트(예: 문서 본문+요약)를 만든다.
- *   화면에는 질문만 표시하고, 서버로는 "컨텍스트 + 질문"을 보내 그 근거로 답하게 한다.
- *   이후 턴은 대화 맥락(히스토리)에 컨텍스트가 남아 있어 다시 붙이지 않는다.
+ * @param buildContext (선택) 하위 호환용. 문서 전용 대화방은 documentId 사용을 권장.
+ * @param documentId (선택) 문서 전용 대화방일 때 대상 문서 ID. 서버가 해당 문서를 기준으로 답변한다.
  */
-export function useAiChat(conversationId?: string, buildContext?: () => string | undefined) {
+export function useAiChat(conversationId?: string, buildContext?: () => string | undefined, documentId?: string) {
   const workspaceId = workspaceStorage.get();
   // State
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -107,7 +106,7 @@ export function useAiChat(conversationId?: string, buildContext?: () => string |
       if (!isCurrent()) throw new Error('Chat scope changed');
       if (!conversationIdRef.current) {
         const title = content.length > 30 ? content.slice(0, 30) + '...' : content;
-        const conversation = await aiApi.createConversation(title, config);
+        const conversation = await aiApi.createConversation(title, config, documentId);
         if (!isCurrent()) throw new Error('Chat scope changed');
         conversationIdRef.current = conversation.conversationId;
         setActiveConversationId(conversation.conversationId);
@@ -128,8 +127,9 @@ export function useAiChat(conversationId?: string, buildContext?: () => string |
     const turnId = nextTurnIdRef.current++;
     setTurns((prev) => [...prev, { id: turnId, question: content, references: [] }]);
 
-    // 새 대화방의 첫 메시지에만 컨텍스트(문서 본문+요약)를 앞에 실어 보낸다. 화면 버블엔 질문만 노출.
-    const preamble = conversationIdRef.current ? undefined : buildContext?.();
+    // 문서 전용 대화방(documentId)이면 서버가 문서 컨텍스트를 알아서 넣으므로 preamble 불필요.
+    // 일반 대화방에서 buildContext가 있으면 첫 메시지에만 앞에 실어 보낸다.
+    const preamble = (documentId || conversationIdRef.current) ? undefined : buildContext?.();
     const apiContent = preamble ? `${preamble}\n\n[질문]\n${content}` : content;
 
     sendMutation.mutate({ content: apiContent, controller }, {

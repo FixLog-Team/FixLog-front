@@ -64,11 +64,14 @@ export const aiApi = {
     return unwrap(res);
   },
 
-  /** AI 대화방 생성. 제목이 없으면 서버가 기본 제목을 부여한다. */
-  async createConversation(title?: string, config = chatConfig()): Promise<AIConversation> {
+  /**
+   * AI 대화방 생성. 제목이 없으면 서버가 기본 제목을 부여한다.
+   * documentId 를 넘기면 문서 전용 대화방이 만들어져, 해당 문서를 기준으로 답변한다.
+   */
+  async createConversation(title?: string, config = chatConfig(), documentId?: string): Promise<AIConversation> {
     const res = await http.post<ApiResponse<AIConversation>>(
       '/api/ai/conversations',
-      { title: title ?? null }, config
+      { title: title ?? null, documentId: documentId ?? null }, config
     );
     return unwrap(res);
   },

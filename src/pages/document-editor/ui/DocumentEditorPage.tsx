@@ -503,6 +503,7 @@ export function DocumentEditorPage() {
         summary={summarize.data}
         isError={summarize.isError}
         onClose={() => setSummaryOpen(false)}
+        documentId={documentId}
         getDocumentText={() => {
           const blocks = editorRef.current?.getBlocks();
           return blocks ? blocksToPlainText(blocks) : '';
