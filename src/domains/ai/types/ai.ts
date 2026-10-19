@@ -10,15 +10,24 @@ export interface AskBody {
   topK?: number;
 }
 
+/** 근거가 나온 곳. 'text' 는 문서 본문, 'image' 는 첨부 이미지를 분석한 결과. */
+export type ReferenceSource = 'text' | 'image';
+
 /** RAG 답변 근거 문서. POST /search 응답과 동일 구조(top-K 요약 정보). */
 export interface AskReference {
   documentId: string;
   title: string;
   folderId: string | null;
-  /** 질문과 관련된 발췌 문장. */
+  /** 질문과 관련된 발췌 문장. source 가 'image' 면 이미지에서 읽어낸 내용이다. */
   excerpt: string;
   /** 유사도 점수(0~1). */
   score: number;
+  /** 이미지 검색 도입 전에 색인된 결과에는 없을 수 있어 선택 필드로 둔다(없으면 본문). */
+  source?: ReferenceSource;
+  /** source 가 'image' 일 때만 채워진다. */
+  imageId?: string | null;
+  /** 이미지 원본 파일명. */
+  imageName?: string | null;
 }
 
 /** POST /ai/ask 응답 result. */
