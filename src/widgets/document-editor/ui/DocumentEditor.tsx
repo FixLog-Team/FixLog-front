@@ -1,8 +1,9 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import '@blocknote/shadcn/style.css';
 import type { Block, PartialBlock } from '@blocknote/core';
+import { createAuthedImageResolver, imagesApi } from '@/domains/images';
 
 export interface DocumentEditorHandle {
   /** 현재 에디터 본문 블록. 저장/AI요약 시 페이지가 읽어간다. */
@@ -26,7 +27,27 @@ export const DocumentEditor = forwardRef<
   DocumentEditorHandle,
   DocumentEditorProps
 >(function DocumentEditor({ initialBlocks, editable = true }, ref) {
-  const editor = useCreateBlockNote({ initialContent: initialBlocks });
+  // 에디터 수명과 함께 가야 object URL 을 떠날 때 한 번에 해제할 수 있다
+  const imageResolver = useMemo(() => createAuthedImageResolver(), []);
+  useEffect(() => () => imageResolver.dispose(), [imageResolver]);
+
+  const editor = useCreateBlockNote({
+    initialContent: initialBlocks,
+    /**
+     * 이미지 삽입(드래그·붙여넣기·슬래시 메뉴) 시 호출된다.
+     * 문서에는 만료되지 않고 권한 검사를 거치는 조회 주소를 저장한다.
+     * 서명 URL 을 저장하면 만료 후 문서가 깨지고 권한 검사도 우회된다.
+     */
+    uploadFile: async (file: File) => {
+      const { url } = await imagesApi.upload(file);
+      return url;
+    },
+    /**
+     * 저장된 주소를 화면에 그릴 수 있는 주소로 바꾼다.
+     * 조회 엔드포인트가 Authorization 헤더를 요구해 `<img src>` 로는 401 이 나기 때문이다.
+     */
+    resolveFileUrl: imageResolver.resolve,
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({ getBlocks: () => editor.document }), [
