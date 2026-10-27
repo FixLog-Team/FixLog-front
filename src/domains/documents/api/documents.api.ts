@@ -18,6 +18,7 @@ import type {
   MoveDocumentBody,
   RenameDocumentBody,
   ListDocumentsParams,
+  RelatedDocumentDto,
   ResourcePermissionDto,
 } from '@/domains/documents/types/document';
 
@@ -124,6 +125,18 @@ export const documentsApi = {
 
     const res = await http.get<ApiResponse<DocumentDto>>(`${PATH}/${documentId}`);
     return toClientBlocks(unwrap(res));
+  },
+
+  /**
+   * 연관 문서. 서버가 문서의 기존 임베딩으로 이웃을 찾아 돌려준다.
+   * 유사도가 낮으면 빈 배열이므로, 비어 있는 것은 오류가 아니라 정상이다.
+   */
+  async listRelated(documentId: string, limit?: number): Promise<RelatedDocumentDto[]> {
+    const res = await http.get<ApiResponse<RelatedDocumentDto[]>>(
+      `${PATH}/${documentId}/related`,
+      { params: limit ? { limit } : undefined }
+    );
+    return unwrap(res);
   },
 
   /**
