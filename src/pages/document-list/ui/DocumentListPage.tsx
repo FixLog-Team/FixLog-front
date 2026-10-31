@@ -91,17 +91,29 @@ export function DocumentListPage() {
 
   const handleFolderClick = (folder: FolderItem) => {
     if (currentFolderId === folder.folderId) return;
-    setBreadcrumb((prev) => [
-      ...prev,
-      { folderId: folder.folderId, folderName: folder.folderName },
-    ]);
+    // 트리에서 전체 경로를 복원한다 — 현재 폴더의 하위 클릭이든, 전역 검색 결과의
+    // 깊은 폴더 클릭이든 동일하게 올바른 breadcrumb 로 이동한다. 트리에 아직 없으면 append.
+    const path = folderTree ? findFolderPath(folderTree, folder.folderId) : null;
+    if (path) {
+      setBreadcrumb(path);
+    } else {
+      setBreadcrumb((prev) => [
+        ...prev,
+        { folderId: folder.folderId, folderName: folder.folderName },
+      ]);
+    }
     loadContents(folder.folderId);
   };
 
   const handleDocumentClick = (document: DocumentDto) => {
-    // 현재 폴더 경로를 함께 넘겨 에디터 breadcrumb 가 진입 경로를 유지하도록 한다.
+    // 문서의 실제 폴더 경로를 넘겨 에디터 breadcrumb 가 올바르게 뜨도록 한다.
+    // (전역 검색 결과처럼 현재 보고 있는 폴더와 다를 수 있으므로 트리에서 경로를 복원)
+    const resolved =
+      document.folderId && folderTree
+        ? findFolderPath(folderTree, document.folderId)
+        : null;
     navigate(documentDetailPath(document.documentId), {
-      state: { folderPath: breadcrumb },
+      state: { folderPath: resolved ?? breadcrumb },
     });
   };
 
