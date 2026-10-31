@@ -13,4 +13,9 @@ export interface TrashItem {
   /** 삭제한 사용자 id. */
   deletedBy: string | null;
   deletedAt: string | null;
+  /**
+   * 직계 부모 폴더도 휴지통에 있으면 그 폴더 id, 아니면 null(최상위).
+   * 값이 있으면 단독 복원 시 복원 위치가 사라진 상태 → targetFolderId 로 위치를 지정해야 한다.
+   */
+  trashedParentId: string | null;
 }
