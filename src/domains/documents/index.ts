@@ -17,3 +17,5 @@ export { useDocument } from '@/domains/documents/hooks/use-document';
 export { useDocumentList } from '@/domains/documents/hooks/use-document-list';
 export { useFavorites, useToggleFavorite } from '@/domains/documents/hooks/use-favorites';
 export { useRelatedDocuments } from '@/domains/documents/hooks/use-related-documents';
+export { saveDraft, loadDraft, clearDraft } from '@/domains/documents/lib/draft-storage';
+export type { DocumentDraft } from '@/domains/documents/lib/draft-storage';

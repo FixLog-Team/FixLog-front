@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { koDateTime } from "@/shared/lib/date/format";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import type { PartialBlock } from "@blocknote/core";
+import type { Block, PartialBlock } from "@blocknote/core";
 import { AppShell } from "@/widgets/app-shell";
 import { DocumentHeader } from "@/widgets/document-header/ui/DocumentHeader";
 import { RelatedDocuments } from "@/widgets/related-documents";
@@ -28,7 +28,14 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/shared/ui/alert-dialog";
-import { useDocument, useFavorites, useToggleFavorite } from "@/domains/documents";
+import {
+  useDocument,
+  useFavorites,
+  useToggleFavorite,
+  saveDraft,
+  loadDraft,
+  clearDraft,
+} from "@/domains/documents";
 import { useSession } from "@/domains/auth/hooks/use-session";
 import { useWorkspaceRole, useOwnerName } from "@/domains/workspaces";
 import { useFolderTree } from "@/domains/folders";
@@ -93,6 +100,11 @@ export function DocumentEditorPage() {
   const location = useLocation();
   const editorRef = useRef<DocumentEditorHandle>(null);
   const { data, error, isLoading, isError } = useDocument(documentId);
+  // 이 문서의 임시 저장본(있으면 재진입 시 이 내용으로 복원). 문서별 1개.
+  const persistedDraft = useMemo(
+    () => (documentId ? loadDraft(documentId) : null),
+    [documentId]
+  );
   const { data: favorites } = useFavorites();
   const toggleFavorite = useToggleFavorite();
   const { data: folderTree } = useFolderTree();
@@ -122,14 +134,29 @@ export function DocumentEditorPage() {
   const draftRef = useRef<{ title: string; blocks: PartialBlock[] | undefined } | null>(null);
   // Ctrl/Cmd+S 콜백이 stale 클로저 없이 최신 저장을 호출하도록 ref 로 보관.
   const saveNowRef = useRef<() => void>(() => {});
+  // 이탈(이동/종료) 시 임시 저장용. 변경 여부와 최신 본문을 추적하고,
+  // 최신 title/preview/data 를 담은 임시저장 함수를 ref 로 보관(unmount·이벤트에서 stale 방지).
+  const dirtyRef = useRef(false);
+  const latestBlocksRef = useRef<Block[] | null>(null);
+  const leaveSaveRef = useRef<(showNotice: boolean) => void>(() => {});
 
   // 미리보기 중인 버전의 본문. 선택이 없으면 조회하지 않는다.
   const previewVersion = useDocumentHistory(documentId, preview?.historyId ?? null);
 
-  // Effects — 문서 로드/전환 시 편집용 제목을 서버 값으로 동기화
+  // Effects — 문서 로드/전환 시 편집용 제목 하이드레이션(문서당 1회).
+  // 임시 저장본이 있으면 그 제목으로 복원하고 안내, 없으면 서버 제목을 쓴다.
+  const hydratedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (data) setTitle(data.title);
-  }, [documentId, data?.title]);
+    if (!data || !documentId) return;
+    if (hydratedRef.current === documentId) return;
+    hydratedRef.current = documentId;
+    if (persistedDraft) {
+      setTitle(persistedDraft.title);
+      toast.show("임시 저장본을 불러왔어요.");
+    } else {
+      setTitle(data.title);
+    }
+  }, [data, documentId, persistedDraft]);
 
   // Ctrl/Cmd + S 로 저장(브라우저 기본 저장 팝업 방지).
   useEffect(() => {
@@ -141,6 +168,23 @@ export function DocumentEditorPage() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // 페이지 이탈 시 변경분을 임시 저장(localStorage).
+  // - 이동(SPA 내 다른 화면, 언마운트): 임시 저장 + 안내 토스트.
+  // - 종료/백그라운드(탭 닫기/새로고침/탭 전환): 임시 저장만(화면이 안 보이므로 토스트 생략).
+  useEffect(() => {
+    const onPageHide = () => leaveSaveRef.current(false);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") leaveSaveRef.current(false);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      leaveSaveRef.current(true); // 언마운트(SPA 이동): 임시 저장 + 안내
+    };
   }, []);
 
   // Functions
@@ -155,6 +199,8 @@ export function DocumentEditorPage() {
     if (!blocks || !data) return true; // 저장할 내용이 없으면 통과
     try {
       await save.mutateAsync({ title: title.trim() || "Untitled", blocks });
+      dirtyRef.current = false; // 저장 완료 → 이탈 임시 저장이 중복 실행되지 않도록 변경 플래그 해제
+      if (documentId) clearDraft(documentId); // 실제 저장됐으니 임시 저장본 제거
       if (showToast) toast.success("문서를 저장했어요.");
       return true;
     } catch (error) {
@@ -175,6 +221,27 @@ export function DocumentEditorPage() {
   };
   // Ctrl/Cmd+S 콜백이 최신 handleSave 를 호출하도록 매 렌더 갱신.
   saveNowRef.current = handleSave;
+
+  // 본문이 바뀌면 최신 블록과 변경 플래그를 기록(이탈 시 자동 저장 판단·전송에 사용).
+  const handleEditorChange = (blocks: Block[]) => {
+    latestBlocksRef.current = blocks;
+    dirtyRef.current = true;
+  };
+
+  // 페이지를 벗어날 때, 저장한 문서와 달라진 변경분을 임시 저장(localStorage)한다.
+  // showNotice=true(이동) 면 "임시 저장했어요" 토스트를 띄운다(종료/백그라운드면 생략).
+  // - 미리보기 중이거나(과거 버전), 변경이 없거나, 문서가 없으면 건너뛴다.
+  // - 문서당 1개만 유지(덮어쓰기). 실제 저장(PUT) 시 제거된다.
+  const leaveSave = (showNotice: boolean) => {
+    if (preview || !dirtyRef.current || !data || !documentId) return;
+    const blocks = latestBlocksRef.current ?? editorRef.current?.getBlocks();
+    if (!blocks || blocks.length === 0) return;
+    saveDraft(documentId, { title: title.trim() || "Untitled", blocks });
+    dirtyRef.current = false;
+    if (showNotice) toast.success("임시 저장했어요.");
+  };
+  // 최신 title/preview/data 를 담아 unmount·이벤트 핸들러가 stale 없이 호출하도록 매 렌더 갱신.
+  leaveSaveRef.current = leaveSave;
 
   // 공유: 최신 내용을 먼저 저장한 뒤 공유 대화상자를 연다.
   // 미리보기 중에는 편집기에 과거 버전이 올라가 있어 저장을 건너뛰고 대화상자만 연다.
@@ -400,13 +467,19 @@ export function DocumentEditorPage() {
         <div className="mx-auto w-full max-w-4xl px-12 pt-12">
           <input
             value={preview ? preview.title : title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              dirtyRef.current = true; // 제목 변경도 이탈 자동 저장 대상
+              // 본문 편집 없이 제목만 바꾸고 이동해도 최신 본문을 함께 저장하도록 스냅샷.
+              latestBlocksRef.current =
+                editorRef.current?.getBlocks() ?? latestBlocksRef.current;
+            }}
             readOnly={preview !== null}
             placeholder="제목을 입력하세요"
             aria-label="문서 제목"
             className="w-full bg-transparent text-[36px] font-semibold leading-tight tracking-[-0.022em] text-foreground outline-none placeholder:text-muted-foreground"
           />
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <Avatar name={ownerName} size="sm" />
               <span className="text-foreground">
@@ -420,7 +493,11 @@ export function DocumentEditorPage() {
             )}
           </div>
           {/* 라벨은 버전 스냅샷에 포함되지 않으므로 과거 버전을 볼 때는 감춘다(현재 라벨을 그 시점 것으로 오해하지 않도록). */}
-          {!preview && <DocumentLabels documentId={documentId} />}
+          {!preview && (
+            <div className="mt-4">
+              <DocumentLabels documentId={documentId} />
+            </div>
+          )}
         </div>
 
         {/* Writing area — BlockNote */}
@@ -447,9 +524,14 @@ export function DocumentEditorPage() {
               key={`${documentId}-${restoreSeq}`}
               ref={editorRef}
               initialBlocks={
-                // 미리보기를 거쳐 돌아온 경우에는 저장 안 한 편집 내용을 그대로 되살린다.
-                draftRef.current ? draftRef.current.blocks : parseBlocks(data.blocks)
+                // 우선순위: 미리보기 복귀 임시본 > 임시 저장본(localStorage) > 서버 본문.
+                draftRef.current
+                  ? draftRef.current.blocks
+                  : persistedDraft
+                    ? (persistedDraft.blocks as PartialBlock[])
+                    : parseBlocks(data.blocks)
               }
+              onChange={handleEditorChange}
               // 과거 버전을 볼 때는 띄우지 않는다. 연관 문서는 버전이 아니라 문서 기준이라
               // 그 시점의 연관 문서로 오해할 수 있다.
               footer={<RelatedDocuments documentId={documentId} />}
