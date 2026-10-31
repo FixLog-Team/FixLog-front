@@ -16,9 +16,19 @@ export const trashApi = {
     return unwrap(res);
   },
 
-  async restore(resourceType: TrashResourceType, resourceId: string): Promise<void> {
+  /**
+   * 복원. 부모가 아직 휴지통인 항목을 단독 복원할 때 targetFolderId 로 복원 위치를 지정한다.
+   * - targetFolderId 지정: 해당 폴더로 이동하며 복원.
+   * - null 또는 생략: 루트로 복원.
+   */
+  async restore(
+    resourceType: TrashResourceType,
+    resourceId: string,
+    targetFolderId?: string | null
+  ): Promise<void> {
     const res = await http.post<ApiResponse<unknown>>(
-      `${PATH}/${resourceType}/${resourceId}/restore`
+      `${PATH}/${resourceType}/${resourceId}/restore`,
+      targetFolderId === undefined ? undefined : { targetFolderId }
     );
     ensureSuccess(res);
   },

@@ -23,12 +23,18 @@ function useInvalidateAfterTrashMutation() {
   };
 }
 
-/** 복원(부모가 휴지통이면 루트로). */
+/**
+ * 복원. targetFolderId 로 복원 위치 지정 가능(부모가 휴지통인 항목용).
+ * 생략/ null 이면 루트로 복원.
+ */
 export function useRestoreTrash() {
   const invalidate = useInvalidateAfterTrashMutation();
   return useMutation({
-    mutationFn: (v: { resourceType: TrashResourceType; resourceId: string }) =>
-      trashApi.restore(v.resourceType, v.resourceId),
+    mutationFn: (v: {
+      resourceType: TrashResourceType;
+      resourceId: string;
+      targetFolderId?: string | null;
+    }) => trashApi.restore(v.resourceType, v.resourceId, v.targetFolderId),
     onSuccess: invalidate,
   });
 }
