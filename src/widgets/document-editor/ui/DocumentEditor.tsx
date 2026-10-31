@@ -1,9 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode } from 'react';
-import { useCreateBlockNote } from '@blocknote/react';
+import {
+  useCreateBlockNote,
+  useEditorChange,
+  FilePanelController,
+} from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import '@blocknote/shadcn/style.css';
 import type { Block, PartialBlock } from '@blocknote/core';
-import { createAuthedImageResolver, imagesApi } from '@/domains/images';
+import { createAuthedImageResolver, imagesApi, validateImageFile } from '@/domains/images';
+import { toast } from '@/shared/ui/toast';
+import { getApiErrorMessage } from '@/shared/lib/http/error-message';
+import { ImageFilePanel } from '@/widgets/document-editor/ui/ImageFilePanel';
 
 export interface DocumentEditorHandle {
   /** 현재 에디터 본문 블록. 저장/AI요약 시 페이지가 읽어간다. */
@@ -21,6 +28,11 @@ interface DocumentEditorProps {
    * 화면 하단에 고정돼 보인다. 그래서 슬롯으로 받아 안쪽에 그린다.
    */
   footer?: ReactNode;
+  /**
+   * 본문이 바뀔 때마다 현재 블록을 알려준다(선택).
+   * 페이지가 변경 여부/최신 본문을 추적해 이탈 시 임시 저장하는 데 쓴다.
+   */
+  onChange?: (blocks: Block[]) => void;
 }
 
 /**
@@ -32,7 +44,7 @@ interface DocumentEditorProps {
 export const DocumentEditor = forwardRef<
   DocumentEditorHandle,
   DocumentEditorProps
->(function DocumentEditor({ initialBlocks, editable = true, footer }, ref) {
+>(function DocumentEditor({ initialBlocks, editable = true, footer, onChange }, ref) {
   // 에디터 수명과 함께 가야 object URL 을 떠날 때 한 번에 해제할 수 있다
   const imageResolver = useMemo(() => createAuthedImageResolver(), []);
   useEffect(() => () => imageResolver.dispose(), [imageResolver]);
@@ -45,8 +57,21 @@ export const DocumentEditor = forwardRef<
      * 서명 URL 을 저장하면 만료 후 문서가 깨지고 권한 검사도 우회된다.
      */
     uploadFile: async (file: File) => {
-      const { url } = await imagesApi.upload(file);
-      return url;
+      // 형식·용량은 보내기 전에 거른다(서버 왕복 없이 즉시 안내).
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        toast.error(validationError);
+        throw new Error(validationError);
+      }
+      try {
+        const { url } = await imagesApi.upload(file);
+        return url;
+      } catch (error) {
+        toast.error(
+          getApiErrorMessage(error, '이미지 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.')
+        );
+        throw error;
+      }
     },
     /**
      * 저장된 주소를 화면에 그릴 수 있는 주소로 바꾼다.
@@ -59,6 +84,9 @@ export const DocumentEditor = forwardRef<
   useImperativeHandle(ref, () => ({ getBlocks: () => editor.document }), [
     editor,
   ]);
+
+  // 본문 변경 구독. 페이지가 변경 여부/최신 본문을 추적해 이탈 시 임시 저장한다.
+  useEditorChange(() => onChange?.(editor.document), editor);
 
   // BlockNote 사이드 메뉴(+ / 드래그 핸들)는 hover 한 블록에 붙어 스크롤 시 그대로 따라다녀
   // 어색하게 남는다. 스크롤 중에는 숨기고(is-scrolling), 다음 마우스 이동(hover) 때 다시 보이게 한다.
@@ -74,7 +102,15 @@ export const DocumentEditor = forwardRef<
       onMouseMove={restoreSideMenuOnMove}
       className="h-full overflow-y-auto bg-card [&.is-scrolling_.bn-side-menu]:!hidden [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12"
     >
-      <BlockNoteView editor={editor} theme="light" editable={editable} />
+      <BlockNoteView
+        editor={editor}
+        theme="light"
+        editable={editable}
+        filePanel={false}
+      >
+        {/* 기본 파일 패널 대신 프로젝트 UI 에 맞춘 이미지 업로드/URL 패널 사용 */}
+        <FilePanelController filePanel={ImageFilePanel} />
+      </BlockNoteView>
       {footer}
     </div>
   );
