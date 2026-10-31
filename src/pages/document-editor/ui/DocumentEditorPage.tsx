@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import type { PartialBlock } from "@blocknote/core";
 import { AppShell } from "@/widgets/app-shell";
 import { DocumentHeader } from "@/widgets/document-header/ui/DocumentHeader";
+import { RelatedDocuments } from "@/widgets/related-documents";
 import {
   DocumentEditor,
   type DocumentEditorHandle,
@@ -449,6 +450,9 @@ export function DocumentEditorPage() {
                 // 미리보기를 거쳐 돌아온 경우에는 저장 안 한 편집 내용을 그대로 되살린다.
                 draftRef.current ? draftRef.current.blocks : parseBlocks(data.blocks)
               }
+              // 과거 버전을 볼 때는 띄우지 않는다. 연관 문서는 버전이 아니라 문서 기준이라
+              // 그 시점의 연관 문서로 오해할 수 있다.
+              footer={<RelatedDocuments documentId={documentId} />}
             />
           )}
         </div>

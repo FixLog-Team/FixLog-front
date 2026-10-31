@@ -10,8 +10,10 @@ export type {
   MoveDocumentBody,
   RenameDocumentBody,
   ListDocumentsParams,
+  RelatedDocumentDto,
   ResourcePermissionDto,
 } from '@/domains/documents/types/document';
 export { useDocument } from '@/domains/documents/hooks/use-document';
 export { useDocumentList } from '@/domains/documents/hooks/use-document-list';
 export { useFavorites, useToggleFavorite } from '@/domains/documents/hooks/use-favorites';
+export { useRelatedDocuments } from '@/domains/documents/hooks/use-related-documents';

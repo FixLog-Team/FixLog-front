@@ -103,3 +103,18 @@ export interface DocumentHistoryDetailDto {
   createUser: string | null;
   createTime: string; // ISO-8601
 }
+
+/**
+ * GET /api/documents/{id}/related 응답 한 건.
+ *
+ * 유사도가 임계값에 못 미치면 서버가 빈 배열을 돌려준다 — 연관 없는 문서는 아예 오지 않는다.
+ */
+export interface RelatedDocumentDto {
+  documentId: string;
+  title: string;
+  folderId: string | null;
+  /** 연관도가 가장 높았던 대목. 왜 이 문서가 걸렸는지 보여준다. */
+  excerpt: string;
+  /** 0~1. 문서가 가진 청크 중 가장 높은 유사도. */
+  score: number;
+}

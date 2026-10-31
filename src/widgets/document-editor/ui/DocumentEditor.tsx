@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import '@blocknote/shadcn/style.css';
@@ -15,6 +15,12 @@ interface DocumentEditorProps {
   initialBlocks?: PartialBlock[];
   /** false 면 읽기 전용. 과거 버전 미리보기처럼 내용을 보여주기만 할 때 쓴다. */
   editable?: boolean;
+  /**
+   * 본문 아래에 이어 붙일 내용(연관 문서 등).
+   * 스크롤 컨테이너를 이 위젯이 쥐고 있어, 밖에 두면 본문과 함께 스크롤되지 않고
+   * 화면 하단에 고정돼 보인다. 그래서 슬롯으로 받아 안쪽에 그린다.
+   */
+  footer?: ReactNode;
 }
 
 /**
@@ -26,7 +32,7 @@ interface DocumentEditorProps {
 export const DocumentEditor = forwardRef<
   DocumentEditorHandle,
   DocumentEditorProps
->(function DocumentEditor({ initialBlocks, editable = true }, ref) {
+>(function DocumentEditor({ initialBlocks, editable = true, footer }, ref) {
   // 에디터 수명과 함께 가야 object URL 을 떠날 때 한 번에 해제할 수 있다
   const imageResolver = useMemo(() => createAuthedImageResolver(), []);
   useEffect(() => () => imageResolver.dispose(), [imageResolver]);
@@ -69,6 +75,7 @@ export const DocumentEditor = forwardRef<
       className="h-full overflow-y-auto bg-card [&.is-scrolling_.bn-side-menu]:!hidden [&_.bn-editor]:mx-auto [&_.bn-editor]:max-w-4xl [&_.bn-editor]:px-24 [&_.bn-editor]:py-12"
     >
       <BlockNoteView editor={editor} theme="light" editable={editable} />
+      {footer}
     </div>
   );
 });
