@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -8,7 +8,6 @@ import {
   // Clock, // TODO: Recent 재활성화 시 복구
   // Star,  // TODO: Favorites 재활성화 시 복구
   Settings,
-  Hash,
   Plus,
   MessageSquare,
   ChevronsUpDown,
@@ -51,6 +50,7 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { getApiErrorMessage } from "@/shared/lib/http/error-message";
 import { CreateFolderDialog } from "@/features/folders/create-folder/ui/CreateFolderDialog";
+import { SidebarTree } from "@/widgets/sidebar/ui/SidebarTree";
 
 interface NavItem {
   label: string;
@@ -73,7 +73,7 @@ export function Sidebar() {
   // Hooks
   const location = useLocation();
   const navigate = useNavigate();
-  const { folders } = useRootFolders(true);
+  const { folders, documents } = useRootFolders(true);
   const { data: session } = useSession();
   const { data: conversationPage } = useConversations(5);
   const deleteConversation = useDeleteConversation();
@@ -90,15 +90,23 @@ export function Sidebar() {
     enabled: hideUnshared,
   });
   const myId = session?.userId;
-  const visibleFolders = useMemo(() => {
-    if (!hideUnshared) return folders;
-    const sharedFolderIds = new Set(
-      (sharedQuery.data?.folders ?? []).map((f) => f.folderId),
-    );
-    return folders.filter(
-      (f) => (!!myId && f.createUser === myId) || sharedFolderIds.has(f.folderId),
-    );
-  }, [hideUnshared, folders, sharedQuery.data, myId]);
+  // 내게 공유된 폴더·문서 id(문서 페이지와 동일하게 둘 다 포함).
+  const sharedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const f of sharedQuery.data?.folders ?? []) ids.add(f.folderId);
+    for (const d of sharedQuery.data?.documents ?? []) ids.add(d.documentId);
+    return ids;
+  }, [sharedQuery.data]);
+  // 문서 페이지 목록과 같은 노출 규칙:
+  // 내가 만든 것 + 내게 공유된 것 + 공유받은 폴더 안쪽(상속)만 보인다.
+  const isVisible = useCallback(
+    (id: string, createUser: string | null, insideShared: boolean) =>
+      !hideUnshared ||
+      insideShared ||
+      (!!myId && createUser === myId) ||
+      sharedIds.has(id),
+    [hideUnshared, myId, sharedIds],
+  );
 
   // State — 팝업(폴더 생성 / 워크스페이스 생성)
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -332,7 +340,7 @@ export function Sidebar() {
       <div className="flex min-h-0 flex-1 flex-col px-2">
         <div className="flex items-center justify-between px-2.5 pb-1 pt-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            폴더
+            내 문서
           </span>
           {/* 폴더 생성 팝업(백업본 기능 복구). 성공 시에만 새 폴더로 이동한다. */}
           <button
@@ -344,21 +352,13 @@ export function Sidebar() {
             <Plus className="size-4" />
           </button>
         </div>
-        <div className="flex flex-col gap-0.5 overflow-y-auto">
-          {visibleFolders.map((folder) => (
-            <Link
-              key={folder.folderId}
-              to={ROUTES.DOCUMENTS}
-              // Documents 페이지가 이 경로를 읽어 해당 폴더를 연다(백업본 기능 복구).
-              state={{
-                folderPath: [{ folderId: folder.folderId, folderName: folder.folderName }],
-              }}
-              className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted"
-            >
-              <Hash className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{folder.folderName}</span>
-            </Link>
-          ))}
+        <div className="flex flex-col gap-0.5 overflow-y-auto pb-2">
+          <SidebarTree
+            folders={folders}
+            documents={documents}
+            isVisible={isVisible}
+            sharedIds={sharedIds}
+          />
         </div>
       </div>
 
