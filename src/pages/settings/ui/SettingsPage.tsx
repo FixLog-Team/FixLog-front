@@ -21,6 +21,7 @@ import {
 import { workspaceStorage } from '@/shared/lib/workspace/workspace-storage';
 import { getApiErrorMessage } from '@/shared/lib/http/error-message';
 import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
+import { OrphanedBadge } from '@/shared/ui/orphaned-badge';
 import { permissionsApi } from '@/domains/permissions';
 import type { SharedWithMeDto } from '@/domains/permissions';
 import { foldersApi } from '@/domains/folders';
@@ -205,6 +206,7 @@ function SharedTreeSection({
           title={d.title}
           createUser={d.createUser}
           createUserName={d.createUserName}
+          orphaned={d.orphaned}
           depth={0}
         />
       ))}
@@ -289,6 +291,7 @@ function SharedFolderNode({
         >
           {folder.folderName || '이름 없는 폴더'}
         </button>
+        {folder.orphaned && <OrphanedBadge />}
       </div>
 
       {expanded && (
@@ -322,7 +325,8 @@ function SharedFolderNode({
                   title={d.title}
                   createUser={d.createUser}
                   createUserName={d.createUserName}
-                  depth={depth + 1}
+                  orphaned={d.orphaned}
+          depth={depth + 1}
                 />
               ))}
             </>
@@ -343,12 +347,14 @@ function SharedDocRow({
   title,
   createUser,
   createUserName,
+  orphaned,
   depth,
 }: {
   documentId: string;
   title: string;
   createUser?: string | null;
   createUserName?: string | null;
+  orphaned?: boolean;
   depth: number;
 }) {
   const resolveOwner = useOwnerName();
@@ -368,6 +374,7 @@ function SharedDocRow({
       >
         {title || '제목 없음'}
       </Link>
+      {orphaned && <OrphanedBadge />}
       {author && (
         <span className="shrink-0 text-xs text-muted-foreground">작성자 · {author}</span>
       )}

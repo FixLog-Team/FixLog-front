@@ -15,6 +15,13 @@ export interface FolderItem {
   createTime: string | null; // ISO-8601
   updateUser: string | null;
   updateTime: string | null; // ISO-8601
+  /**
+   * true 면 원래 상위 폴더에 접근 권한이 없어, 접근 가능한 가장 가까운 조상 목록에
+   * 끌어올려져 표시되는 항목이다(원래 위치가 아님).
+   */
+  orphaned?: boolean;
+  /** 원래 부모 폴더 id. orphaned 가 아니면 null. */
+  originalParentId?: string | null;
 }
 
 /** 폴더 콘텐츠(하위 폴더 + 문서). 서버 FolderContentsDto 대응. */

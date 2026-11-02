@@ -34,6 +34,7 @@ import {
   AlertDialogCancel,
 } from '@/shared/ui/alert-dialog';
 import { toast } from '@/shared/ui/toast';
+import { OrphanedBadge } from '@/shared/ui/orphaned-badge';
 import { ROUTES } from '@/shared/constants/routes';
 import { ItemActionsMenu, MoveDialog } from '@/widgets/item-actions';
 import { useDocumentLabels } from '@/domains/labels';
@@ -451,6 +452,7 @@ export function DocumentListSection({
                   <span className="truncate font-medium text-foreground">
                     {folder.folderName}
                   </span>
+                  {folder.orphaned && <OrphanedBadge />}
                 </span>
                 <span className="text-muted-foreground">폴더</span>
                 <OwnerCell name={resolveOwner(folder.createUser)} />
@@ -491,7 +493,7 @@ export function DocumentListSection({
                     label={`${doc.title} 선택`}
                   />
                 )}
-                <DocumentNameCell title={doc.title} documentId={doc.documentId} />
+                <DocumentNameCell title={doc.title} documentId={doc.documentId} orphaned={doc.orphaned} />
                 <span className="text-muted-foreground">문서</span>
                 <OwnerCell name={resolveOwner(doc.createUser)} />
                 <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">
@@ -564,9 +566,11 @@ export function DocumentListSection({
 function DocumentNameCell({
   title,
   documentId,
+  orphaned,
 }: {
   title: string;
   documentId: string;
+  orphaned?: boolean;
 }) {
   const { data } = useDocumentLabels(documentId);
   const labels = data ?? [];
@@ -574,7 +578,10 @@ function DocumentNameCell({
     <span className="flex min-w-0 items-start gap-3">
       <FileText className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />
       <span className="flex min-w-0 flex-col gap-1">
-        <span className="truncate font-medium text-foreground">{title}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium text-foreground">{title}</span>
+          {orphaned && <OrphanedBadge />}
+        </span>
         {labels.length > 0 && (
           <span className="flex flex-wrap gap-1">
             {labels.map((label) => (
