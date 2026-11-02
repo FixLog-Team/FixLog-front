@@ -30,6 +30,7 @@ import {
 } from "@/shared/ui/alert-dialog";
 import {
   useDocument,
+  useDocumentPermission,
   useFavorites,
   useToggleFavorite,
   saveDraft,
@@ -51,6 +52,7 @@ import { TagSuggestionDialog } from "@/features/labels/add-label/ui/TagSuggestio
 import { ShareDialog } from "@/features/sharing/share-resource/ui/ShareDialog";
 import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { toast } from "@/shared/ui/toast";
+import { OrphanedBadge } from "@/shared/ui/orphaned-badge";
 import { ROUTES } from "@/shared/constants/routes";
 import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
 import { getApiErrorMessage, isForbiddenError } from "@/shared/lib/http/error-message";
@@ -100,6 +102,10 @@ export function DocumentEditorPage() {
   const location = useLocation();
   const editorRef = useRef<DocumentEditorHandle>(null);
   const { data, error, isLoading, isError } = useDocument(documentId);
+  // 편집 권한(canEdit)은 문서를 열 때 my-permission 으로 미리 알 수 있다.
+  // 서버가 값을 주지 않는 경우(구버전)에는 편집 가능으로 보고 기존 동작을 유지한다.
+  const permission = useDocumentPermission(documentId);
+  const canEdit = permission.data?.canEdit !== false;
   // 이 문서의 임시 저장본(있으면 재진입 시 이 내용으로 복원). 문서별 1개.
   const persistedDraft = useMemo(
     () => (documentId ? loadDraft(documentId) : null),
@@ -231,9 +237,11 @@ export function DocumentEditorPage() {
   // 페이지를 벗어날 때, 저장한 문서와 달라진 변경분을 임시 저장(localStorage)한다.
   // showNotice=true(이동) 면 "임시 저장했어요" 토스트를 띄운다(종료/백그라운드면 생략).
   // - 미리보기 중이거나(과거 버전), 변경이 없거나, 문서가 없으면 건너뛴다.
+  // - 편집 권한이 없으면(canEdit=false) 어차피 저장할 수 없으므로 임시 저장본을 만들지 않는다.
   // - 문서당 1개만 유지(덮어쓰기). 실제 저장(PUT) 시 제거된다.
   const leaveSave = (showNotice: boolean) => {
     if (preview || !dirtyRef.current || !data || !documentId) return;
+    if (!canEdit) return;
     const blocks = latestBlocksRef.current ?? editorRef.current?.getBlocks();
     if (!blocks || blocks.length === 0) return;
     saveDraft(documentId, { title: title.trim() || "Untitled", blocks });
@@ -435,6 +443,7 @@ export function DocumentEditorPage() {
           isHistoryOpen={historyOpen}
           onDelete={() => setIsDeleteOpen(true)}
           canDelete={canDelete}
+          canEdit={canEdit}
         />
       }
     >
@@ -474,7 +483,7 @@ export function DocumentEditorPage() {
               latestBlocksRef.current =
                 editorRef.current?.getBlocks() ?? latestBlocksRef.current;
             }}
-            readOnly={preview !== null}
+            readOnly={preview !== null || !canEdit}
             placeholder="제목을 입력하세요"
             aria-label="문서 제목"
             className="w-full bg-transparent text-[36px] font-semibold leading-tight tracking-[-0.022em] text-foreground outline-none placeholder:text-muted-foreground"
@@ -491,6 +500,8 @@ export function DocumentEditorPage() {
             ) : (
               data.updateTime && <span>Updated {formatUpdated(data.updateTime)}</span>
             )}
+            {/* 원래 폴더에 접근 권한이 없어 다른 위치에 떠 있는 문서임을 알린다. */}
+            {!preview && data.orphaned && <OrphanedBadge />}
           </div>
           {/* 라벨은 버전 스냅샷에 포함되지 않으므로 과거 버전을 볼 때는 감춘다(현재 라벨을 그 시점 것으로 오해하지 않도록). */}
           {!preview && (
@@ -532,6 +543,9 @@ export function DocumentEditorPage() {
                     : parseBlocks(data.blocks)
               }
               onChange={handleEditorChange}
+              // 편집 권한이 없으면 입력 자체를 막는다. 저장이 403 으로 거부되므로
+              // 입력을 허용하면 어디에도 남지 않는 작업을 하게 된다.
+              editable={canEdit}
               // 과거 버전을 볼 때는 띄우지 않는다. 연관 문서는 버전이 아니라 문서 기준이라
               // 그 시점의 연관 문서로 오해할 수 있다.
               footer={<RelatedDocuments documentId={documentId} />}

@@ -41,6 +41,11 @@ interface DocumentHeaderProps {
   onDelete?: () => void;
   /** 삭제 버튼 노출 여부(소유자/관리자만). 기본 true. */
   canDelete?: boolean;
+  /**
+   * 편집(저장) 가능 여부. false 면 저장 버튼을 감춘다.
+   * 서버가 편집 권한 없는 사용자의 저장을 403 으로 막으므로 눌러도 실패하는 버튼은 보이지 않게 한다.
+   */
+  canEdit?: boolean;
 }
 
 export function DocumentHeader({
@@ -61,6 +66,7 @@ export function DocumentHeader({
   isHistoryOpen = false,
   onDelete,
   canDelete = true,
+  canEdit = true,
 }: DocumentHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
@@ -113,14 +119,23 @@ export function DocumentHeader({
             <Download />
             {isDownloading ? '다운로드 중…' : '다운로드'}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onSave}
-            disabled={isSaving}
-          >
-            {isSaving ? '저장 중…' : '저장'}
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onSave}
+              disabled={isSaving}
+            >
+              {isSaving ? '저장 중…' : '저장'}
+            </Button>
+          ) : (
+            <span
+              title="이 문서에 편집 권한이 없어 보기만 할 수 있어요."
+              className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"
+            >
+              읽기 전용
+            </span>
+          )}
           <Button size="sm" onClick={onSummarize}>
             <Sparkles />
             요약
