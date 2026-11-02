@@ -4,7 +4,7 @@ import { Card } from '@/shared/ui/card';
 import { Switch } from '@/shared/ui/switch';
 import { Avatar } from '@/shared/ui/avatar';
 import { cn } from '@/shared/lib/utils/index';
-import { getApiErrorMessage } from '@/shared/lib/http/error-message';
+import { getApiErrorMessage, isForbiddenError } from '@/shared/lib/http/error-message';
 import type { Workspace } from '@/domains/workspaces';
 import { useRootFolders, useFolderChildren } from '@/domains/folders';
 import type { FolderItem } from '@/domains/folders';
@@ -28,7 +28,6 @@ import {
   PERMISSION_TYPE_LABEL,
   ROLE_LABEL,
   formatDate,
-  selectClass,
   SectionTitle,
   Notice,
   Table,
@@ -42,6 +41,12 @@ interface Selected {
   kind: ResourceKind;
   id: string;
   name: string;
+  /**
+   * 직속 상위 폴더 id(루트 직속이면 null).
+   * 서버는 "상위 폴더가 상속 중이면" 이 리소스의 권한 변경을 403 으로 막으므로,
+   * 잠김 여부를 판단하려면 자기 값이 아니라 상위 폴더의 상속 설정을 봐야 한다.
+   */
+  parentFolderId: string | null;
 }
 
 /** Access 셀: ALLOW 는 초록, DENY 는 빨강으로 구분해 표시한다. */
@@ -154,7 +159,14 @@ function FolderNode({
         </button>
         <button
           type="button"
-          onClick={() => onSelect({ kind: 'folder', id: folder.folderId, name: folder.folderName })}
+          onClick={() =>
+            onSelect({
+              kind: 'folder',
+              id: folder.folderId,
+              name: folder.folderName,
+              parentFolderId: folder.parentId,
+            })
+          }
           className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-left"
         >
           <Folder className="size-4 shrink-0 text-primary" />
@@ -201,7 +213,14 @@ function DocumentNode({
     <li>
       <button
         type="button"
-        onClick={() => onSelect({ kind: 'document', id: document.documentId, name: document.title })}
+        onClick={() =>
+          onSelect({
+            kind: 'document',
+            id: document.documentId,
+            name: document.title,
+            parentFolderId: document.folderId,
+          })
+        }
         className={cn(
           'flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm',
           isSelected ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-muted'
@@ -234,6 +253,15 @@ function ResourcePermissionPanel({
 
   // Hooks — 이 리소스의 권한 현황 + 현재 워크스페이스의 모든 구성원.
   const list = useAdminResourcePermissions(workspaceId, resourceType, selected.id, true);
+  // 상위 폴더가 상속 중이면 이 리소스의 권한 변경이 서버에서 403 으로 막힌다.
+  // 잠김 여부는 상위 폴더의 상속 설정으로만 알 수 있어 따로 조회한다(루트 직속이면 조회 안 함).
+  const parentList = useAdminResourcePermissions(
+    workspaceId,
+    'FOLDER',
+    selected.parentFolderId ?? '',
+    !!selected.parentFolderId
+  );
+  const inheritanceLocked = parentList.data?.inheritFromParent === true;
   const membersQuery = useAdminUsers(workspaceId);
   const grant = useAdminGrantPermission(workspaceId);
   const updatePerm = useAdminUpdatePermission(workspaceId);
@@ -284,7 +312,9 @@ function ResourcePermissionPanel({
     });
   };
 
-  const isBusy = grant.isPending || updatePerm.isPending || remove.isPending;
+  // 상속으로 잠겨 있으면 저장이 거부되므로 조작 자체를 막는다.
+  const isBusy =
+    grant.isPending || updatePerm.isPending || remove.isPending || inheritanceLocked;
 
   // 하단 카드 탭: 구성원 접근 권한(스위치) / 공유 내역(이 리소스의 모든 부여 기록)
   const [tab, setTab] = useState<'members' | 'shares'>('members');
@@ -322,12 +352,24 @@ function ResourcePermissionPanel({
           </p>
         </div>
 
-        {/* Folder settings — 현재 상속/기본 접근 값으로 초기화 (폴더만) */}
+        {/* 상속 잠김 안내 — 상위 폴더가 상속 중이면 이 리소스의 권한·상속 설정을 바꿀 수 없다. */}
+        {inheritanceLocked && (
+          <p
+            role="status"
+            className="mt-3 rounded-lg border border-border bg-muted px-3 py-2.5 text-xs text-muted-foreground"
+          >
+            상위 폴더가 권한을 상속 중이라 이 항목의 권한을 변경할 수 없습니다. 상위 폴더의
+            &apos;부모 폴더 권한 상속&apos;을 해제한 뒤 설정하세요.
+          </p>
+        )}
+
+        {/* Folder settings — 현재 상속 값으로 초기화 (폴더만) */}
         {isFolder && list.data && (
           <FolderSettingsControl
             workspaceId={workspaceId}
             folderId={selected.id}
-            current={{ inheritFromParent: list.data.inheritFromParent, baseAccess: list.data.baseAccess }}
+            current={{ inheritFromParent: list.data.inheritFromParent }}
+            locked={inheritanceLocked}
           />
         )}
       </Card>
@@ -430,8 +472,9 @@ function ResourcePermissionPanel({
           </ul>
         )}
         <p className="border-t border-border p-4 text-xs text-muted-foreground">
-          <b>공유</b> 스위치로 구성원에게 직접 접근을 부여(ALLOW)하거나 취소(회수)합니다. 접근을 막으려면 공유를 취소하세요.
-          다만 <b>상위 폴더 상속</b>이나 <b>기본 접근(baseAccess)</b>으로 열려 있으면 공유를 취소해도 여전히 접근될 수 있으며, 이때는 폴더 설정에서 조정합니다.
+          <b>공유</b> 스위치로 구성원에게 직접 접근을 부여(ALLOW)하거나 차단(DENY)합니다.
+          구성원은 기본적으로 모든 문서에 접근할 수 있고, 여기서 선택적으로 제한합니다.
+          다만 <b>상위 폴더 상속</b>으로 열려 있으면 이 항목의 설정을 바꿀 수 없으며, 상위 폴더의 상속을 먼저 해제해야 합니다.
           관리자·소유자는 특권으로 항상 전체 접근이라 설정 대상이 아닙니다.
         </p>
         </>
@@ -504,38 +547,46 @@ function SharesTab({
 }
 
 /* ------------------------------------------------------------------ */
-/* Folder settings (상속 끊기 / 기본 접근)                                */
+/* Folder settings (부모 폴더 권한 상속)                                  */
 /* ------------------------------------------------------------------ */
 
 /**
- * 폴더 상속(inheritFromParent)·기본 접근(baseAccess) 설정.
- * 리소스 권한 조회 응답의 현재값으로 초기화하고, 적용 시 PATCH 로 저장한다.
+ * 폴더 상속(inheritFromParent) 설정.
+ * 리소스 권한 조회 응답의 현재값으로 초기화하고, 변경 즉시 PATCH 로 저장한다.
+ * locked=true(상위 폴더가 상속 중)면 서버가 403 으로 막으므로 토글을 비활성화한다.
  */
 function FolderSettingsControl({
   workspaceId,
   folderId,
   current,
+  locked,
 }: {
   workspaceId: string;
   folderId: string;
-  current: { inheritFromParent: boolean | null; baseAccess: AdminPermissionType | null };
+  current: { inheritFromParent: boolean | null };
+  locked: boolean;
 }) {
   const update = useAdminUpdateFolderSettings(workspaceId);
   const [inheritFromParent, setInheritFromParent] = useState(current.inheritFromParent ?? true);
-  const [baseAccess, setBaseAccess] = useState<AdminPermissionType>(current.baseAccess ?? 'ALLOW');
   const [saved, setSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 변경 즉시 저장 — PATCH 는 두 필드를 함께 보내야 나머지가 기본값으로 초기화되지 않는다.
-  const apply = (nextInherit: boolean, nextBase: AdminPermissionType) => {
+  const apply = (nextInherit: boolean) => {
     setErrorMessage(null);
     setSaved(false);
     update.mutate(
-      { folderId, body: { inheritFromParent: nextInherit, baseAccess: nextBase } },
+      { folderId, body: { inheritFromParent: nextInherit } },
       {
         onSuccess: () => setSaved(true),
-        onError: (error) =>
-          setErrorMessage(getApiErrorMessage(error, '폴더 설정 저장에 실패했습니다.')),
+        onError: (error) => {
+          // 저장 실패 시 화면 값을 되돌려 서버 상태와 어긋나지 않게 한다.
+          setInheritFromParent(!nextInherit);
+          setErrorMessage(
+            isForbiddenError(error)
+              ? '상위 폴더가 권한 상속 중입니다. 상위 폴더의 상속을 해제한 후 설정하세요.'
+              : getApiErrorMessage(error, '폴더 설정 저장에 실패했습니다.')
+          );
+        },
       }
     );
   };
@@ -548,30 +599,13 @@ function FolderSettingsControl({
           <input
             type="checkbox"
             checked={inheritFromParent}
-            disabled={update.isPending}
+            disabled={update.isPending || locked}
             onChange={(e) => {
               setInheritFromParent(e.target.checked);
-              apply(e.target.checked, baseAccess);
+              apply(e.target.checked);
             }}
           />
           부모 폴더 권한 상속
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-foreground">
-          기본 접근
-          <select
-            value={baseAccess}
-            disabled={update.isPending}
-            onChange={(e) => {
-              const next = e.target.value as AdminPermissionType;
-              setBaseAccess(next);
-              apply(inheritFromParent, next);
-            }}
-            className={cn(selectClass, 'h-8')}
-            aria-label="기본 접근"
-          >
-            <option value="ALLOW">ALLOW · 허용</option>
-            <option value="DENY">DENY · 차단</option>
-          </select>
         </label>
         {update.isPending ? (
           <span className="text-xs text-muted-foreground">저장 중…</span>
@@ -585,7 +619,8 @@ function FolderSettingsControl({
         </p>
       )}
       <p className="mt-1.5 text-xs text-muted-foreground">
-        변경하면 자동 저장됩니다. 상속을 끄면 상위 폴더 권한을 무시하고, 기본 접근은 직접 권한이 없는 구성원에게 적용됩니다(워크스페이스 기본값과 별개).
+        변경하면 자동 저장됩니다. 상속을 켜면 하위 폴더·문서는 이 폴더의 권한을 따르며, 하위 항목의
+        권한을 개별로 바꿀 수 없습니다.
       </p>
     </div>
   );

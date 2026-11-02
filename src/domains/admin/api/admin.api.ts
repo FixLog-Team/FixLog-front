@@ -129,7 +129,10 @@ export const adminApi = {
     ensureSuccess(res);
   },
 
-  /** 폴더 상속(inheritFromParent)·기본 접근(baseAccess) 설정. */
+  /**
+   * 폴더 상속(inheritFromParent) 설정.
+   * 상위 폴더가 상속 중이면 서버가 403 으로 막는다(상속 lock).
+   */
   async updateFolderSettings(
     workspaceId: string,
     folderId: string,
