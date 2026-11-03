@@ -14,6 +14,7 @@ export type {
   ResourcePermissionDto,
 } from '@/domains/documents/types/document';
 export { useDocument } from '@/domains/documents/hooks/use-document';
+export { useDocumentPermission } from '@/domains/documents/hooks/use-document-permission';
 export { useDocumentList } from '@/domains/documents/hooks/use-document-list';
 export { useFavorites, useToggleFavorite } from '@/domains/documents/hooks/use-favorites';
 export { useRelatedDocuments } from '@/domains/documents/hooks/use-related-documents';

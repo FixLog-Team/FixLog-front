@@ -25,12 +25,24 @@ export interface DocumentDto {
   createTime: string | null; // ISO-8601
   updateUser: string | null;
   updateTime: string | null; // ISO-8601
+  /**
+   * true 면 원래 폴더에 접근 권한이 없어, 접근 가능한 가장 가까운 조상 목록에
+   * 끌어올려져 표시되는 문서다(원래 위치가 아님).
+   */
+  orphaned?: boolean;
+  /** 원래 폴더 id. orphaned 가 아니면 null. */
+  originalFolderId?: string | null;
 }
 
 /** 문서/폴더에 대한 현재 사용자의 유효 권한. */
 export interface ResourcePermissionDto {
   access: boolean;
   canDownload: boolean;
+  /**
+   * 편집(저장) 가능 여부. 서버가 VIEW 외 동작을 이 값으로 막는다.
+   * 구버전 서버 호환을 위해 optional — 값이 없으면 편집 가능으로 본다.
+   */
+  canEdit?: boolean;
   source: 'DIRECT' | 'INHERITED' | 'WORKSPACE_DEFAULT';
   sourceDetail: string | null;
 }

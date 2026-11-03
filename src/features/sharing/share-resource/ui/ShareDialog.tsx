@@ -140,27 +140,42 @@ export function ShareDialog({ open, onOpenChange, kind, id, name, canManage }: S
                 >
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                     {p.principalName}
-                    {p.principalType === 'GROUP' && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        (그룹)
-                      </span>
+                    {p.principalType === 'GROUP' ? (
+                      <span className="ml-1 text-xs text-muted-foreground">(그룹)</span>
+                    ) : (
+                      // 동명이인 구별용. 서버가 USER 에만 이메일을 준다.
+                      p.principalEmail && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({p.principalEmail})
+                        </span>
+                      )
                     )}
                   </span>
                   <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
                     허용
                     {!p.canDownload && ' · 반출금지'}
                   </span>
-                  {/* 회수는 소유자·관리자만 */}
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={() => revoke.mutate(p.permissionId)}
-                      aria-label={`${p.principalName} 공유 회수`}
-                      disabled={revoke.isPending}
-                      className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                  {/* 상속된 권한은 이 리소스에서 회수할 수 없다(상위 폴더에서 회수해야 함). */}
+                  {p.inheritedFromFolderId ? (
+                    <span
+                      title="상위 폴더에서 상속된 권한입니다. 회수하려면 해당 폴더의 공유에서 제거하세요."
+                      className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                     >
-                      <X className="size-4" />
-                    </button>
+                      상속됨
+                    </span>
+                  ) : (
+                    /* 회수는 소유자·관리자만 */
+                    canManage && (
+                      <button
+                        type="button"
+                        onClick={() => revoke.mutate(p.permissionId)}
+                        aria-label={`${p.principalName} 공유 회수`}
+                        disabled={revoke.isPending}
+                        className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    )
                   )}
                 </li>
               ))}

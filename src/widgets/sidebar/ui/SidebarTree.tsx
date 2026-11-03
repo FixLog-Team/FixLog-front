@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ChevronRight, ChevronDown, Folder, FileText } from 'lucide-react';
 import { ROUTES, documentDetailPath } from '@/shared/constants/routes';
+import { OrphanedBadge } from '@/shared/ui/orphaned-badge';
 import { QUERY_KEYS } from '@/app/config/query-keys';
 import { foldersApi } from '@/domains/folders';
 import type { FolderItem, FolderPathItem } from '@/domains/folders';
@@ -135,6 +136,7 @@ function SidebarFolderNode({
         >
           <Folder className="size-[18px] shrink-0 text-primary" />
           <span className="truncate">{folder.folderName}</span>
+          {folder.orphaned && <OrphanedBadge />}
         </Link>
       </div>
 
@@ -207,6 +209,7 @@ function SidebarDocumentRow({
       <span aria-hidden className="size-4 shrink-0" />
       <FileText className="size-[18px] shrink-0 text-muted-foreground" />
       <span className="truncate">{document.title}</span>
+      {document.orphaned && <OrphanedBadge />}
     </Link>
   );
 }

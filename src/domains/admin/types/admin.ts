@@ -84,12 +84,14 @@ export interface AdminPermission {
 
 /**
  * GET .../admin/permissions/resources/{type}/{id} 응답.
- * 리소스에 설정된 권한 목록 + (폴더면) 현재 상속·기본 접근 설정. 문서면 inherit/base 는 null.
+ * 리소스에 설정된 권한 목록 + 상속 상태.
+ *
+ * inheritFromParent 는 "이 리소스가 상위 폴더 권한을 상속 중인가"를 뜻한다.
+ * true 면 서버가 이 리소스의 권한 변경을 403 으로 막으므로, 화면도 편집을 잠가야 한다.
  */
 export interface AdminResourcePermissions {
   permissions: AdminPermission[];
   inheritFromParent: boolean | null;
-  baseAccess: AdminPermissionType | null;
 }
 
 /** POST .../admin/permissions 요청 (직접 권한 부여). permissionType 생략 시 ALLOW, canDownload 생략 시 true. */
@@ -108,12 +110,10 @@ export interface AdminUpdatePermissionBody {
   canDownload?: boolean;
 }
 
-/** PATCH .../admin/permissions/resources/folders/{folderId}/settings 요청 (폴더 상속·기본 접근). */
+/** PATCH .../admin/permissions/resources/folders/{folderId}/settings 요청 (폴더 상속 설정). */
 export interface FolderSettingsBody {
   /** true 면 부모 폴더 권한을 상속(기본값 true). */
   inheritFromParent?: boolean;
-  /** 직접 권한이 없는 구성원에게 적용되는 기본 접근(ALLOW/DENY, 기본 ALLOW). */
-  baseAccess?: AdminPermissionType;
 }
 
 /** GET/POST .../admin/invitations 항목 (서버 InvitationDto). */
