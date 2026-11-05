@@ -40,6 +40,8 @@ import type { ActionTarget } from '@/widgets/item-actions/ui/types';
 import { ShareDialog } from '@/features/sharing/share-resource/ui/ShareDialog';
 import { useSession } from '@/domains/auth';
 import { useWorkspaceRole } from '@/domains/workspaces';
+import { toast } from '@/shared/ui/toast';
+import { isForbiddenError } from '@/shared/lib/http/error-message';
 
 interface ItemActionsMenuProps {
   target: ActionTarget;
@@ -142,7 +144,12 @@ export function ItemActionsMenu({ target, onChanged, onMoved }: ItemActionsMenuP
       await downloadDocument.mutateAsync({ documentId: target.id, title: target.name });
     } catch (error) {
       console.error('download failed:', error);
-      alert('다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      // 권한 때문에 막힌 경우는 다시 시도해도 결과가 같다. 원인을 그대로 알린다.
+      toast.error(
+        isForbiddenError(error)
+          ? '이 문서를 다운로드할 권한이 없어요.'
+          : '다운로드에 실패했어요. 잠시 후 다시 시도해 주세요.'
+      );
     }
   };
 

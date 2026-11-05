@@ -7,7 +7,7 @@ import { DocumentListSection } from '@/widgets/document-list-section/ui/Document
 import { foldersApi, useFolderTree } from '@/domains/folders';
 import type { FolderItem, FolderPathItem, FolderTreeNode } from '@/domains/folders';
 import type { DocumentDto } from '@/domains/documents';
-import { permissionsApi } from '@/domains/permissions';
+import { collectSharedPathFolderIds, permissionsApi } from '@/domains/permissions';
 import { useWorkspaceRole } from '@/domains/workspaces';
 import { useSession } from '@/domains/auth';
 import { useCreateDocument } from '@/features/documents/create-document/hooks/use-create-document';
@@ -58,6 +58,17 @@ export function DocumentListPage() {
     for (const d of sharedQuery.data?.documents ?? []) set.add(d.documentId);
     return set;
   }, [sharedQuery.data]);
+
+  // 공유받은 항목으로 내려가는 경로 폴더. 폴더 자체가 공유되지 않았더라도 길은 열어준다.
+  // (경로 폴더 안에서 실제로 보이는 항목은 아래 isVisible 에서 다시 공유 여부로 걸러진다.)
+  const pathFolderIds = useMemo(() => {
+    const targets = new Set<string>();
+    for (const f of sharedQuery.data?.folders ?? []) targets.add(f.folderId);
+    for (const d of sharedQuery.data?.documents ?? []) {
+      if (d.folderId) targets.add(d.folderId);
+    }
+    return collectSharedPathFolderIds(folderTree, targets);
+  }, [sharedQuery.data, folderTree]);
 
   // State
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -184,13 +195,14 @@ export function DocumentListPage() {
 
   // 노출 필터(일반 구성원·협업 워크스페이스): 내게 명시적으로 공유된 것(shared-with-me)만 보인다.
   // - 내가 만든 항목은 항상 표시(생성자 보호)
-  // - 공유받은 폴더 안(현재 경로에 공유 폴더가 포함)에 들어와 있으면 그 하위는 모두 표시(폴더 공유 상속)
-  const insideSharedScope = breadcrumb.some((b) => sharedIds.has(b.folderId));
+  // - 공유받은 항목으로 가는 경로 폴더는 표시(길 열기). 단 그 안도 이 규칙으로 다시 걸러진다.
+  // 폴더를 통째로 공유받은 경우에도 하위는 자동 노출하지 않는다 — shared-with-me 는 직접 공유된
+  // 항목만 돌려주므로, 개별 공유되지 않은 하위 항목은 접근 권한이 있어도 목록에서 숨긴다.
   const isVisible = (id: string, createUser: string | null) =>
     !hideUnshared ||
     (!!myId && createUser === myId) ||
-    insideSharedScope ||
-    sharedIds.has(id);
+    sharedIds.has(id) ||
+    pathFolderIds.has(id);
   const visibleFolders = folders.filter((f) => isVisible(f.folderId, f.createUser));
   const visibleDocuments = documents.filter((d) => isVisible(d.documentId, d.createUser));
 

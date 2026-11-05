@@ -54,7 +54,10 @@ import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { toast } from "@/shared/ui/toast";
 import { OrphanedBadge } from "@/shared/ui/orphaned-badge";
 import { ROUTES } from "@/shared/constants/routes";
-import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
+import {
+  isResourceAccessDeniedError,
+  isResourceNotFoundError,
+} from "@/shared/lib/http/resource-access-error";
 import { getApiErrorMessage, isForbiddenError } from "@/shared/lib/http/error-message";
 
 /** 폴더 트리에서 targetId 까지의 조상 경로를 찾는다(루트→대상). 없으면 null. */
@@ -106,6 +109,7 @@ export function DocumentEditorPage() {
   // 서버가 값을 주지 않는 경우(구버전)에는 편집 가능으로 보고 기존 동작을 유지한다.
   const permission = useDocumentPermission(documentId);
   const canEdit = permission.data?.canEdit !== false;
+  const canDownload = permission.data?.canDownload !== false;
   // 이 문서의 임시 저장본(있으면 재진입 시 이 내용으로 복원). 문서별 1개.
   const persistedDraft = useMemo(
     () => (documentId ? loadDraft(documentId) : null),
@@ -341,9 +345,12 @@ export function DocumentEditorPage() {
   }
 
   if (isError || !data || !documentId) {
-    const errorMessage = isResourceAccessDeniedError(error)
-      ? "문서에 접근할 권한이 없습니다."
-      : "문서를 불러오지 못했습니다.";
+    // 404(삭제·부재)와 403(권한 없음)을 구분해 안내한다.
+    const errorMessage = isResourceNotFoundError(error)
+      ? "삭제되었거나 존재하지 않는 문서입니다."
+      : isResourceAccessDeniedError(error)
+        ? "문서에 접근할 권한이 없습니다."
+        : "문서를 불러오지 못했습니다.";
 
     return (
       <AppShell>
@@ -392,11 +399,15 @@ export function DocumentEditorPage() {
 
   // 문서 PDF 다운로드(GET /api/documents/{id}/download). 최신 내용을 먼저 저장한 뒤 다운로드.
   const handleDownload = async () => {
-    const ok = await persist();
-    if (!ok) {
-      if (!preview) alert("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    // 다운로드 권한이 없으면 서버가 403 으로 막는다. 저장을 먼저 시도하면
+    // "편집 권한 없음 → 저장 실패" 안내가 앞서 떠 원인을 오해하게 되므로, 권한부터 본다.
+    if (!canDownload) {
+      toast.error("이 문서를 다운로드할 권한이 없어요.");
       return;
     }
+    // PDF 에 최신 내용을 담기 위해 저장한다. 편집 권한이 없거나 미리보기 중이면 저장은 건너뛰고
+    // 서버에 저장된 내용을 그대로 받는다(저장 실패 안내는 persist 내부 토스트가 담당).
+    if (canEdit && !preview) await persist();
     try {
       await downloadDocument.mutateAsync({
         documentId,
@@ -404,7 +415,11 @@ export function DocumentEditorPage() {
       });
     } catch (error) {
       console.error("Failed to download document:", error);
-      alert("다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      toast.error(
+        isForbiddenError(error)
+          ? "이 문서를 다운로드할 권한이 없어요."
+          : "다운로드에 실패했어요. 잠시 후 다시 시도해 주세요."
+      );
     }
   };
 

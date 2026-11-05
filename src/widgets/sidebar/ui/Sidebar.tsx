@@ -30,12 +30,13 @@ import {
   DropdownMenuSeparator,
 } from "@/shared/ui/dropdown-menu";
 import { useRootFolders } from "@/domains/folders/hooks/use-root-folders";
+import { useFolderTree } from "@/domains/folders";
 import { useSession, authApi } from "@/domains/auth";
 import { useConversations } from "@/domains/ai/hooks/use-conversations";
 import { useDeleteConversation } from "@/domains/ai/hooks/use-delete-conversation";
 import type { AIConversation } from "@/domains/ai";
 import { useWorkspaces, useWorkspaceRole, workspacesApi } from "@/domains/workspaces";
-import { permissionsApi } from "@/domains/permissions";
+import { collectSharedPathFolderIds, permissionsApi } from "@/domains/permissions";
 import { workspaceStorage } from "@/shared/lib/workspace/workspace-storage";
 import { NameInputDialog } from "@/shared/ui/name-input-dialog";
 import {
@@ -74,6 +75,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { folders, documents } = useRootFolders(true);
+  const { data: folderTree } = useFolderTree();
   const { data: session } = useSession();
   const { data: conversationPage } = useConversations(5);
   const deleteConversation = useDeleteConversation();
@@ -97,15 +99,24 @@ export function Sidebar() {
     for (const d of sharedQuery.data?.documents ?? []) ids.add(d.documentId);
     return ids;
   }, [sharedQuery.data]);
+  // 공유받은 항목으로 내려가는 경로 폴더(문서 페이지와 동일). 길만 열고 내용은 다시 걸러진다.
+  const pathFolderIds = useMemo(() => {
+    const targets = new Set<string>();
+    for (const f of sharedQuery.data?.folders ?? []) targets.add(f.folderId);
+    for (const d of sharedQuery.data?.documents ?? []) {
+      if (d.folderId) targets.add(d.folderId);
+    }
+    return collectSharedPathFolderIds(folderTree, targets);
+  }, [sharedQuery.data, folderTree]);
   // 문서 페이지 목록과 같은 노출 규칙:
-  // 내가 만든 것 + 내게 공유된 것 + 공유받은 폴더 안쪽(상속)만 보인다.
+  // 내가 만든 것 + 내게 공유된 것 + 공유 항목으로 가는 경로 폴더만 보인다.
   const isVisible = useCallback(
-    (id: string, createUser: string | null, insideShared: boolean) =>
+    (id: string, createUser: string | null) =>
       !hideUnshared ||
-      insideShared ||
       (!!myId && createUser === myId) ||
-      sharedIds.has(id),
-    [hideUnshared, myId, sharedIds],
+      sharedIds.has(id) ||
+      pathFolderIds.has(id),
+    [hideUnshared, myId, sharedIds, pathFolderIds],
   );
 
   // State — 팝업(폴더 생성 / 워크스페이스 생성)
@@ -357,7 +368,6 @@ export function Sidebar() {
             folders={folders}
             documents={documents}
             isVisible={isVisible}
-            sharedIds={sharedIds}
           />
         </div>
       </div>
