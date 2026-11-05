@@ -54,7 +54,10 @@ import { blocksToPlainText } from "@/shared/lib/editor/blocks-to-plain-text";
 import { toast } from "@/shared/ui/toast";
 import { OrphanedBadge } from "@/shared/ui/orphaned-badge";
 import { ROUTES } from "@/shared/constants/routes";
-import { isResourceAccessDeniedError } from "@/shared/lib/http/resource-access-error";
+import {
+  isResourceAccessDeniedError,
+  isResourceNotFoundError,
+} from "@/shared/lib/http/resource-access-error";
 import { getApiErrorMessage, isForbiddenError } from "@/shared/lib/http/error-message";
 
 /** 폴더 트리에서 targetId 까지의 조상 경로를 찾는다(루트→대상). 없으면 null. */
@@ -341,9 +344,12 @@ export function DocumentEditorPage() {
   }
 
   if (isError || !data || !documentId) {
-    const errorMessage = isResourceAccessDeniedError(error)
-      ? "문서에 접근할 권한이 없습니다."
-      : "문서를 불러오지 못했습니다.";
+    // 404(삭제·부재)와 403(권한 없음)을 구분해 안내한다.
+    const errorMessage = isResourceNotFoundError(error)
+      ? "삭제되었거나 존재하지 않는 문서입니다."
+      : isResourceAccessDeniedError(error)
+        ? "문서에 접근할 권한이 없습니다."
+        : "문서를 불러오지 못했습니다.";
 
     return (
       <AppShell>
