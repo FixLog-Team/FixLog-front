@@ -18,34 +18,21 @@ import type { DocumentDto } from '@/domains/documents';
  */
 
 /** 항목 노출 여부 판정. 문서 페이지의 isVisible 과 같은 규칙을 주입받는다. */
-export type SidebarVisibility = (
-  id: string,
-  createUser: string | null,
-  insideShared: boolean
-) => boolean;
+export type SidebarVisibility = (id: string, createUser: string | null) => boolean;
 
 interface SidebarTreeProps {
   folders: FolderItem[];
   documents: DocumentDto[];
   isVisible: SidebarVisibility;
-  /** 내게 공유된 폴더/문서 id. 공유 폴더 안쪽은 하위 전체가 보인다(폴더 공유 상속). */
-  sharedIds: Set<string>;
 }
 
 /** 들여쓰기 — 깊이당 12px. */
 const indentOf = (depth: number) => ({ paddingLeft: 10 + depth * 12 });
 
-export function SidebarTree({
-  folders,
-  documents,
-  isVisible,
-  sharedIds,
-}: SidebarTreeProps) {
-  const visibleFolders = folders.filter((f) =>
-    isVisible(f.folderId, f.createUser, false)
-  );
+export function SidebarTree({ folders, documents, isVisible }: SidebarTreeProps) {
+  const visibleFolders = folders.filter((f) => isVisible(f.folderId, f.createUser));
   const visibleDocuments = documents.filter((d) =>
-    isVisible(d.documentId, d.createUser, false)
+    isVisible(d.documentId, d.createUser)
   );
 
   if (visibleFolders.length === 0 && visibleDocuments.length === 0) {
@@ -62,9 +49,7 @@ export function SidebarTree({
           folder={folder}
           depth={0}
           path={[{ folderId: folder.folderId, folderName: folder.folderName }]}
-          insideShared={sharedIds.has(folder.folderId)}
           isVisible={isVisible}
-          sharedIds={sharedIds}
         />
       ))}
       {visibleDocuments.map((doc) => (
@@ -79,16 +64,12 @@ function SidebarFolderNode({
   folder,
   depth,
   path,
-  insideShared,
   isVisible,
-  sharedIds,
 }: {
   folder: FolderItem;
   depth: number;
   path: FolderPathItem[];
-  insideShared: boolean;
   isVisible: SidebarVisibility;
-  sharedIds: Set<string>;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -99,13 +80,11 @@ function SidebarFolderNode({
     enabled: open,
   });
 
-  // 공유받은 폴더 안으로 들어오면 그 하위는 모두 보인다(폴더 공유 상속).
-  const childInsideShared = insideShared || sharedIds.has(folder.folderId);
   const childFolders = (data?.folders ?? []).filter((f) =>
-    isVisible(f.folderId, f.createUser, childInsideShared)
+    isVisible(f.folderId, f.createUser)
   );
   const childDocuments = (data?.documents ?? []).filter((d) =>
-    isVisible(d.documentId, d.createUser, childInsideShared)
+    isVisible(d.documentId, d.createUser)
   );
   const isEmpty = childFolders.length === 0 && childDocuments.length === 0;
 
@@ -167,9 +146,7 @@ function SidebarFolderNode({
                     ...path,
                     { folderId: child.folderId, folderName: child.folderName },
                   ]}
-                  insideShared={childInsideShared}
                   isVisible={isVisible}
-                  sharedIds={sharedIds}
                 />
               ))}
               {childDocuments.map((doc) => (
